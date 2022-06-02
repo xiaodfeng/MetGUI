@@ -1,0 +1,298 @@
+---
+title: "MetGUI manual"
+author: "Xiaodong Feng"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    toc_float: true
+
+bibliography: MetGUI manual.bib
+vignette: >
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE, cache = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# knitr::opts_knit$set(root.dir = "Identification/R") # Change the directory accordingly
+```
+
+# Introduction
+
+This document contains basic steps of processing LC-MS datasets. This document was created based on [xcms vignette](https://bioconductor.org/packages/release/bioc/vignettes/xcms/inst/doc/xcms.html), [xcms3_featurebasedMN](https://github.com/DorresteinLaboratory/XCMS3_FeatureBasedMN/blob/master/XCMS3_Preprocessing.Rmd) and [msPurity vignette](https://bioconductor.org/packages/devel/bioc/vignettes/msPurity/inst/doc/msPurity-lcmsms-data-processing-and-spectral-matching-vignette.html). This workflow aims to improve the identification part in LC-MS-based lipidomics. The novelties exist in:
+
+-   Implement the dynamic theory into the peak matching part, original is 10 ppm as default.Accurate identification relies heavily on MS2 alignment. For low-resolution mass spectrometry, the peak binning method was used, represented by default 1 Da value in Msnbase; While for high-resolution mass spectrometry, the peak matching method was proposed and applied in OrgMassSpecR and msPurity. The peak matching method is usually based on a fixed tolerance, such as 0.25 Da of the default setting in OrgMassSpecR,10 0.005 Da for Orbitrap, and 0.015 Da for QTOF.12 However, a fixed tolerance in the peak matching method may cause misalignment, as the mass resolution will change according to the mz value. Fig. 1a shows an example of misalignment: In this head-to-tail figure, the query and library's m/z and intensity values were plotted in the x-axis and y-axis, respectively. The exact values can be accessed in the table below. There are four mighty hits in the figure. However, a fixed tolerance, e.g., 0.005, will miss the mighty hits located at m/z 240 Da because the mass difference between query and library is 0.006 Da. A solution to this problem is to use a fixed tolerance in the ppm unit, represented by msPurity. This solution works fine for QTOF but still has the problem for Orbitrap, in which the mass tolerance should be set proportional to 〖mz〗\^1.5. In our work, a dynamic mass tolerance was set for peak matching method according to the mass spectrometry types, which is proportional to 〖mz〗\^2 for FTICR, to 〖mz〗\^1.5 for Orbitrap, to m/z for Q-TOF and is a constant for Quadrupole mass analyzer, respectively. Let's go back to Fig. 1a's example, with the dynamic peak matching method, the mighty hit located at 240 Da will also be aligned for the follow-up score calculation. As shown in Fig. 1b, with a fixed tolerance, e.g., 0.005 Da, three mighty hits' intensities are used to score calculation, resulting in a dot-product score of 0.9866. This score was increased to 0.9899 with a dynamic tolerance because four mighty hits' intensities are considered for the score calculation.
+
+-   Implement the optimized scaling factor into dot-product score. An alternative way of calculating the dot product score is to use the weighted intensity. As shown in Fig. 1c, the intensity was weighted with a scaling factor of (2, 0.5) for (m/z, intensity). The weighted intensity contributed to a higher dot-product score of 0.9971. Various scaling factors of mass and intensity are suggested, such as (1, 0.5),^13^ (3, 0.6),^14^ (0, 0.33),^15^ (2, 0.5),^16^ (1.3, 0.53)^17^ for GC-MS dataset. For LC-MS dataset: (0, 1) was used in GNPS; (0, 1) was suggested based on 777 compounds of micropollutants;^12^ (0, 1) was used in METLIN guided in-source fragment annotation for metabolomics;^18^ The **scaling factor** of (0.9, 1.2)^19^ was confirmed using a method calculated based on the ratio of skewness to kurtosis of the mass spectral similarity scores.^17^ This scaling factor gives greater emphasis to higher mz fragments. However, only 82 lipids from HCD and 89 lipids from CID are used as a reference library. Our research used 1790 lipids provided by Thomas Metz's group at the Pacific Northwest National Lab (PNNL) to confirm the scaling factor suitable for LC-MS/MS-based lipidomics.
+
+-   Implement the decoy searching with dynamic shift.
+
+-   Calculation of Xcorr based on target and decoy dot-product score.
+
+-   Calculation of Pep score based on the distribution target and decoy dot-product score.
+
+![Figure 1 Novelty](vignettes/Figure_1_Novelty.png)
+
+# Load required packages and functions
+
+This script is tested on the R version (4.0.1). The functions and packages were imported using the source functions in r. The python scripts were extracted from the qvality function of [triqler](https://github.com/statisticalbiotechnology/triqler/blob/master/triqler/qvality.py)
+
+```{r packages and functions, warnings=FALSE, message=FALSE, cache=FALSE}
+source("Functions_Vignette.R")
+source_python("Python/qvality_extracted.py")
+```
+
+# Process the .raw dataset using the XCMS package
+
+The .raw dataset were converted into .mzML format using the msconvert package, with the centroid method selected. The .mzML format dataset were then be loaded into XCMS using readMSData command from package MSnbase. As shown below.
+
+## ImportData using readMSData command from package MSnbase
+
+In this example, we use the pure internal standards mixture containing 43 lipids, which was generated by Orbitrap dataset, see details in *Feng, X.; Zhang, W.; Kuipers, F.; Kema, I.; Barcaru, A.; Horvatovich, P. Dynamic Binning Peak Detection and Assessment of Various Lipidomics Liquid Chromatography-Mass Spectrometry Pre-Processing Platforms. Anal. Chim. Acta 2021, 1173, 338674.* The .raw dataset needs to be transfered into .mzML dataset using msconvert.
+
+```{r ImportData, message = FALSE}
+Dir <- "d:/gitlab/identification/Dataset"
+## Get the full path to the CDF files
+cdfs <- dir(Dir, full.names = TRUE, recursive = TRUE)
+## Create a phenodata data.frame
+groupname <- dir(Dir, recursive = TRUE)
+groupname <- sub(groupname, pattern = ".mzML", replacement = "", perl = TRUE)
+groupname <- sub(groupname, pattern = ".*_", replacement = "", perl = TRUE)
+pd <- data.frame(
+  sample_name = sub(basename(cdfs),
+    pattern = ".mzML",
+    replacement = "", fixed = TRUE
+  ),
+  sample_group = groupname, stringsAsFactors = FALSE
+)
+head(pd)
+onDisk <- readMSData(files = cdfs, pdata = new("NAnnotatedDataFrame", pd), mode = "onDisk")
+```
+
+## Peak detection
+
+In this example, we perform the peak detection using XCMS's Centwave aligorithm. The parameters used in peak detection are important. The user need to adjust these parameters according to their own dataset. For example, the noise threshold should be different between Orbitrap and Q-TOF. After initial peak detection, we can have a look of detected peaks.
+
+```{r Peak detection, message = FALSE, warning=FALSE}
+cwp <- CentWaveParam(
+  snthresh = 10, noise = 100000, ppm = 7, peakwidth = c(2.4, 30),
+  prefilter = c(1, 200000), firstBaselineCheck = TRUE, integrate = 2
+)
+onDisk <- findChromPeaks(onDisk, param = cwp)
+head(chromPeaks(onDisk))
+```
+
+## Retention time alignment
+
+This step aims to correct the retention time shift between samples, in this example, we performed the retention time alignment using the \*obiwarp\* method [\@Prince:2006jj]. See XCMS vignettes for details.
+
+```{r Retention time alignment, message = FALSE, warning=FALSE}
+onDisk <- adjustRtime(onDisk, param = ObiwarpParam())
+```
+
+## Grouping
+
+This step aims to group the detected peaks from different samples into features. The user has to set up the sample groups according to their own datasets. The *bw* is used to define the bandwidth (standard deviation ot the smoothing kernel) to be used. The *binSize* defines the width of overlapping m/z slices to use for creating peak density chromatograms and grouping peaks across samples. The user needs to adjust the parameters according to their own datasets.
+
+```{r Grouping, message = FALSE}
+pdp <- PeakDensityParam(
+  sampleGroups = onDisk$sample_group,
+  bw = 15,
+  binSize = 0.02
+)
+onDisk <- groupChromPeaks(onDisk, param = pdp)
+```
+
+## Export peak area quantification table
+
+Merge the feature definitions with feature intensities according to the feature index. The feature table will be further used for the extraction of tandem MS
+
+```{r Export peak area quantification table, message = FALSE}
+## Merge feature definitions with feature intensities according to the feature index
+featuresDef <- featureDefinitions(onDisk)
+featuresIntensities <- featureValues(onDisk, value = "into")
+Feature <- merge(featuresDef, featuresIntensities, by = 0, all = TRUE) %>% data.table(.)
+## Calculate the mean intensity
+Feature[, Intensity := apply(Feature[, 12:13], 1, mean, na.rm = TRUE)]
+head(Feature)
+```
+
+## Export MS2
+
+Export the related MS2 according to the index in MS1. The use is suggested to remove zero intensity values from each spectrum. From the related MS2, we select each feature the Spectrum2 with the largest TIC. Some features may not contain the related MSMS, we exclude these features in this step.
+
+```{r Export MS2, message=FALSE, warning=FALSE}
+Spectra <- featureSpectra(onDisk, return.type = "Spectra")
+Spectra <- clean(Spectra, all = TRUE)
+## Select for each feature the Spectrum2 with the largest TIC.
+Spectra_maxTic <- combineSpectra(Spectra, fcol = "feature_id", method = maxTic)
+## filter data table to contain only peaks with MSMS
+filteredFeature <- Feature[which(Feature$Row.names %in% Spectra_maxTic@elementMetadata$feature_id), ]
+```
+
+# Calculation of the mass tollerance with dynamic theory
+
+Calculate the mass tolerance base on mass resolving power (MRP) and reference m/z (RefMZ), to be used for the identification module. A stands for the reference fwhm calculated based on the dynamic theory, B stands for the standard deviation calculationi based on A. *See details in equations (16) and (17) in X. Feng, W. Zhang, F. Kuipers, I. Kema, A. Barcaru, P. Horvatovich, Dynamic binning peak detection and assessment of various lipidomics liquid chromatography-mass spectrometry pre-processing platforms. Anal. Chim. Acta. 1173, 338674 (2021).* The calculated *B* was further used in the mzCompare function to set up the upper and lower limits. The *mzCompare* function was modified base on the function in *msPurity* package.
+
+```{r Calculation of the mass tollerance}
+MRP <- 17500
+RefMZ <- 200
+A <- 1 / (MRP * (RefMZ^0.5))
+B <- A / 2.35482
+mzCompare <<- function(mz1, mz2, ppm1, ppm2) {
+  mz1Lo <- round(mz1 - (B * mz1^1.5 + mz1 / 1000000), 10)
+  mz1Up <- round(mz1 + (B * mz1^1.5 + mz1 / 1000000), 10)
+  mz2Lo <- round(mz2 - (B * mz2^1.5 + mz2 / 1000000), 10)
+  mz2Up <- round(mz2 + (B * mz2^1.5 + mz2 / 1000000), 10)
+  # does the range 1 overlap with range 2 ? If yes, then return.
+  return(overlap(mz1Lo, mz1Up, mz2Lo, mz2Up))
+}
+```
+
+# Optimize the scaling factor in the dot-product score
+
+An alternative way of calculating the dot product score is to use the weighted intensity. So to speak the optimized scaling facator. Different scaling factors were suggested according to different datasets. We found the optimized scaling factors were different depending on HCD or CID mode of colision mode. And we think it is better to use a dynamic optimized scling factors according to user's distribution of the dataset. We proposed the method below how to optimize the scaling factor based on the Orbitrap dataset of 43 pure internal standards. We can then extract the related MS2 information of the feature.The filteredFeature was generated based on previous step.
+
+```{r Extract the related MS2, message=FALSE, warning=FALSE}
+## Extract the related MS2 information of the feature
+results <- apply(filteredFeature[, 1], 1, F_ExtractMS2)
+results_dt <- ldply(results, data.frame) # Transfer results from list to data.frame
+MS2 <- data.table(results_dt) %>% setnames(., c("V1", "V2"), c("mz", "intensity"))
+head(MS2)
+```
+
+Once we obtain the MS2, we can then use them to optimize the scaling factor. The vector of finding the optimized scaling factor was set according the original publication. The user can change them if needed. The Cutoff was used to filter out the noise, here we only use top 500 for demonstration purpose. The binwidth was used for the plotting the distribution pattern.
+
+```{r Optimize the scaling factor, message=FALSE, warning=FALSE}
+## Optimize the scaling factor
+wmzVector <<- c(0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1, 1.3, 2, 3, 4, 5, 10) # original vector
+wintVector <<- c(.01, .05, .1, .2, .3, .4, .5, .53, .6, .7, .8, .9, 1, 2, 3, 5, 10)
+OptimizedWeight <- F_opt.weight(Name = "PureIS 43 compounds", MS2 = MS2, Cutoff = 500, binwidth = 10)
+```
+
+The distribution of MS2 is shown below.
+
+![Figure 2 Distribution](vignettes/Figure_2_Distribution.svg){width="629"}
+
+The optimized scaling factors is shown below.
+
+![Figure 3 Optimal](vignettes/Figure_3_Optimal.svg)
+
+# Spectral matching module
+
+The spectral matching module was modified based on msPurity, with the following novelties:
+
+-   Implement the dynamic theory into the peak matching part, original is 10 ppm as default.
+-   Implement the optimized scaling factor into dot-product score.
+-   Implement the decoy searching with dynamic shift.
+-   Calculation of Xcorr based on target and decoy dot-product score.
+
+## load the library database
+
+To perform the spectral matching, we first need to prepare the library. Here we downloaded the library from [msp2db](https://github.com/computational-metabolomics/msp2db/releases/tag/v0.0.14-mona-23042021), which includes the database created by parsing all of the available MoNA MSP files as of 23/04/2021. As the example dataset is in positive mode, so here we only use the positive library with the parameter *l_accessionsValue*.
+
+```{r load the library database, message=FALSE, warning=FALSE}
+l_dbPthValue <- "d:/gitlab/identification/Database/20210423_mona.sqlite"
+con <- DBI::dbConnect(RSQLite::SQLite(), l_dbPthValue)
+library_spectra_meta <- con %>%
+  dplyr::tbl("library_spectra_meta") %>%
+  dplyr::collect() %>%
+  as.data.table(.)
+## Create the library accessions, to reduce the library
+MetaPos <- library_spectra_meta[polarity == "positive"]
+l_accessionsValue <- MetaPos$accession
+```
+
+## Create the query database from XCMS results
+
+Using msPurity's function, we can create the query database from previous XCMS results. Then final query database is named as 'q_dbPth.sqlite'. To speed up the library searching time, we selected from the XCMS features with the 'grpid' information. For demonstration purpose, we only select XCMS feature with mz=692.5292, which is related to 1,3-20:4 D5 DG in M+Na adduct format.
+
+```{r Create the query database, message=FALSE}
+## Purity assesments and linking fragmentation to XCMS features
+pa <- purityA(cdfs)
+if (length(unique(msLevel(onDisk))) != 1) {
+  onDisk <- filterMsLevel(onDisk, msLevel = 1)
+} # to use MS1
+pa <- frag4feature(pa, onDisk) # link the MS2 with MS1
+pa <- filterFragSpectra(pa, allfrag = TRUE) # filter the fragmentation spectra
+pa <- averageAllFragSpectra(pa) # treat the inter and intra fragmentation scans the same
+pa@puritydf
+q_dbPthValue <- createDatabase(pa, onDisk, dbName = "q_dbPth.sqlite")
+qon <- DBI::dbConnect(RSQLite::SQLite(), q_dbPthValue)
+## Extract from the query database the "c_peak_groups", which will be used for subset.
+c_peak_groups <- qon %>%
+  dplyr::tbl("c_peak_groups") %>%
+  dplyr::collect() %>%
+  as.data.table(.)
+names(c_peak_groups)
+GroundTruth <- read.csv("d:/gitlab/identification/Database/Ground truth_inchikey.csv")
+names(GroundTruth)
+## Add the inchikey from the manually checked ground truth table
+top <- as.data.frame(GroundTruth[, c("mz", "inchikey_id")])
+bottom <- as.data.frame(c_peak_groups[, c("mz", "grpid")])
+Tol <- 0.01
+for (i in 1:nrow(bottom)) {
+  top[, 1][abs(bottom[, 1][i] - top[, 1]) < Tol] <- bottom[, 1][i]
+}
+alignment <- merge(top, bottom, by = 1) %>% data.table(.)
+q_xcmsGroupsValue <- alignment$grpid # use this index for mass query
+```
+
+## Spectral matching
+
+With the query and library database, we can start spectral matching. The raW and mzW parameters are the optimized scaling factor for intensity and mz respectively. As the example dataset is in positive mode, we only used a subset of library with positve mode. We also used a subset of XCMS results to reduce the library searching time, with the 'q_xcmsGroupsValue' parameter. The user may need the 'memory.limit(size=56000)' command to increase the working memory. The query database was created in the previous step, with the q_dbPthValue to indicate the working directroy. The library database was indicated by the l_dbPthValue parameter. The scaling factor of intensity (raW) and (mzW) was decided base on OptimizedWeight which was calculated based on previous step. To speed up the library search procedure, we commented out the reverse dot product score (rdpc) and composite dot product score (cdpc) in the original msPurity package.
+
+```{r Spectral matching, message=TRUE}
+result <- spectralMatching(
+  q_dbPth = q_dbPthValue, l_dbPth = l_dbPthValue,
+  l_accessions = l_accessionsValue,
+  q_xcmsGroups = q_xcmsGroupsValue, #
+  q_raThres = 1, l_raThres = 1,
+  raW = OptimizedWeight$opt.int, # Relative abundance weight for spectra
+  mzW = OptimizedWeight$opt.mz # mz weight for spectra
+  
+)
+names(result)
+result
+write.csv(result,'result.csv')
+```
+
+We can then have a look of the matched results, among them \* dpc - dot product cosine of the match \* dpc.decoy - dot product cosine of the match calculated based on the decoy database \* dpc.xcorr - cross correlation score of dpc \* mcount - number of matching peaks \* allcount - total number of peaks across both query and library spectra \* mpercent - percentage of matching peaks across both query and library spectra \* library_rt - retention time of library spectra, in minute \* library_accession - library accession value (unique string or number given to eith MoNA or Massbank data entires) \* library_precursor_mz - library precursor mz \* library_precursor_ion_purity - library precursor ion purity \* library_precursor_type - library precursor type (i.e. adduct) \* library_entry_name - Name given to the library spectra \* library_inchikey - inchikey of the matched library spectra \* library_lpid - id in database of library spectra \* query_qpid - id in database of query spectra \* query_rt - retention time of query spectra, in minute \* query_precursor_mz - query precursor mz \* query_inchikey - inchikey of the query spectra \* query_precursor_ion_purity - query precursor ion purity \* mid - the index of the matched candidates \* rtdiff - difference between library and query retention time
+
+## Label the matchedResults
+
+This is for the follow up step, we label the query_inchikey with privious results, then use the inchikey information to distinguish true or false positive identification.
+
+```{r Label the matchedResults, message=TRUE}
+MzInchikey <- alignment[, c("mz", "inchikey_id")] %>% setnames(., "mz", "query_precursor_mz")
+Selected <- left_join(result, MzInchikey, by = "query_precursor_mz") %>%
+  data.table(.) %>%
+  .[, outcome := "Poor"] %>%
+  # label the identification quality
+  .[library_inchikey == inchikey_id, outcome := "Good"] %>%
+  # if the inchikey is consistent, label as good
+  .[1:10] # only select the top ten candidates
+# MatchedResults[]=lapply(MatchedResults,type.convert,as.is=TRUE) # to transfer the character into numbers
+Selected
+```
+
+# Pep score calculation
+
+Calculation of Pep based on the distribution target and decoy dot-product score. Here we implement the post processing score to the matching module. The calculation is based on the qvality function of the python script. We use the dpc and dpc.decoy from previous steps as input of the pep score calculation. Only the top 10 candidates were selected.The regression curve can be of an useful tool to set the proper cutoff score. The 20 scores (10 target + 10 decoy) were binned, out of which the medians were calculated. On x-axis, plot each bin's median, on y-axis, plot the negative ratio in each bin, as indicated by the blue Asterisk. The bins with a high negative ratio have a high probability to be false identifications. The organge line were plotted based on the calculated pep score. Based on the pep score and the regression curve. We can set the cutoff of identification score as 0.2. This means we exclude the matches with a score lower than 0.2.
+
+```{r Calculate the Pep score, message=FALSE}
+dpc.Pep <- getQvaluesFromScores(Selected$dpc, Selected$dpc.decoy) # use the function from python 
+Selected <- cbind(Selected, dpc.Pep[1:round(length(dpc.Pep) / 2)])
+# write.csv(Selected, "Selected.csv", row.names = F)
+Selected
+```
+![Figure 4 PepScore](vignettes/Figure_4_PepScore.png)
+
+## Session information
+
+```{r Session information}
+sessionInfo() 
+```
