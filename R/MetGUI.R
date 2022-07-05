@@ -96,6 +96,7 @@ MetGUI <- function() {
   ### Set Experimental design frame in ImportData tab
   lo_Dataset[2, 2] <- widgets$bt_importdata <- gbutton("Import data", handler = function(h, ...) {
     # Define a data.frame with sample descriptions
+    Group <<- c(rep('Hyp',3), rep('Norm',3))
     pd <- data.frame(file = cdffiles, sample_group = c(rep('Hyp',3), rep('Norm',3)))
     print(pd)
     # Read the files
@@ -460,7 +461,8 @@ MetGUI <- function() {
   })
   lo_Identification[2, 1:2] <- gbutton("Create query database", handler = function(h, ...) {
     print("Create query database is working...")
-    q_dbPthValue <- msPurity::createDatabase(pa, xdata1, dbName = "q_dbPth.sqlite")
+    q_dbPthValue <<- msPurity::createDatabase(pa, xdata1, dbName = "q_dbPth.sqlite")
+    q_dbPthValue <<- 'd:/github/MetGUI/output/q_dbPth.sqlite'
     qon <- DBI::dbConnect(RSQLite::SQLite(), q_dbPthValue)
     ## Extract from the query database the "c_peak_groups", which will be used for subset.
     # c_peak_groups <- qon %>%
@@ -473,7 +475,7 @@ MetGUI <- function() {
   })
   lo_Identification[3, 1:2] <- gbutton("Create library database", handler = function(h, ...) {
     print("Create library database is working...")
-    l_dbPthValue <- "d:/github/MetGUI/input/MoNA-export-LC-MS-MS_Spectra.sqlite"
+    l_dbPthValue <<- "d:/github/MetGUI/input/MoNA-export-LC-MS-MS_Spectra.sqlite"
     con <- DBI::dbConnect(RSQLite::SQLite(), l_dbPthValue)
     print("Create library database done!")
   })
