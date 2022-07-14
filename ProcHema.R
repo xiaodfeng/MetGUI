@@ -14,7 +14,7 @@ Raw_PureAA_Pos<-F_readMSData(Dir = "D:/VirtualMachineDisk/Hematology/Centroid/AA
 # Raw_MixAA_Neg<-F_readMSData(Dir = "d:/VirtualMachineDisk/Hematology/HilicNegative/DDA/mzMLCentroid/NormalVSHYP",
 #                             Group= c(rep("BLANK", 3),rep("HYP01", 3),rep("HYP02", 3),rep("HYP03", 3),rep("Normal01", 3),rep("Normal02", 3),rep("Normal03", 3)))
 Raw_MixAA_Pos<-F_readMSData(Dir = "D:/VirtualMachineDisk/Hematology/Centroid/NormalVSHYP",
-                            Group= c(rep("BLANK", 3),rep("HYP01", 3),rep("HYP02", 3),rep("HYP03", 3),rep("Normal01", 3),rep("Normal02", 3),rep("Normal03", 3)))
+              Group= c(rep("HYP01", 3),rep("HYP02", 3),rep("HYP03", 3),rep("Normal01", 3),rep("Normal02", 3),rep("Normal03", 3)))
 
 # Raw_MixAA_Pos22<-F_readMSData(Dir = "D:/VirtualMachineDisk/Hematology/Centroid/NormalVSHYP22",
 #                             Group= c(rep("BLANK", 3),rep("HYP", 3),rep("Norm", 3)))
@@ -51,7 +51,7 @@ register(SerialParam()) #disable paralell
 # xdata_MixAA_Neg <- F_adjustRtime(xdata_MixAA_Neg,param = paramNeg)
 # xdata_PureAA_Neg <- F_adjustRtime(xdata_PureAA_Neg,param = ObiwarpParam(subset = 1:3, subsetAdjust = "average"))
 
-paramPos<-ObiwarpParam(subset = 4:21, subsetAdjust = "average") # use normal condition as reference
+paramPos<-ObiwarpParam(subsetAdjust = "average") # use normal condition as reference
 xdata_MixAA_Pos <- F_adjustRtime(xdata_MixAA_Pos,param = paramPos)
 xdata_PureAA_Pos <- F_adjustRtime(xdata_PureAA_Pos,param = ObiwarpParam(subset = 1:3, subsetAdjust = "average"))
 
@@ -74,11 +74,11 @@ F_adjustRtimeEffect<-function(Raw,xdata,Name){
   # legend("topright",legend=unique(bpis$sample_group),col=unique(group_colors[bpis$sample_group]), lty=1, cex=0.4,box.lty=0) #
   # title(sub=paste("RT alignment before bpis",Name,seq=""))
   plot(bpis_adj, col = group_colors[bpis_adj$sample_group])
-  legend("topright",legend=unique(bpis$sample_group),col=unique(group_colors[bpis$sample_group]), lty=1, cex=0.4,box.lty=0) #
+  legend("topright",legend=unique(bpis$sample_group),col=unique(group_colors[bpis$sample_group]), lty=1, cex=1,box.lty=0) #
   # title(sub=paste("RT alignment after bpis",Name,seq=""))
   dev.off()
 }
-group_colors <- c("black","coral1","coral2","coral3","cyan1","cyan2","cyan3")
+group_colors <- c("coral1","coral2","coral3","cyan1","cyan2","cyan3")
 names(group_colors) <- unique(xdata_MixAA_Pos$sample_group)
 F_adjustRtimeEffect(Raw = Raw_MixAA_Pos, xdata = xdata_MixAA_Pos, Name = "K562_2020_Pos")
 
@@ -116,17 +116,17 @@ F_boxplotxdata<-function(xdata,Cell,group_colors,Keywords){ ## Boxplot after pea
        adj = 0.965,
        ## Increase label size.
        cex = 1.2)
-  legend("topright",legend=unique(xdata$sample_group),col=unique(group_colors[xdata$sample_group]), lty=1, cex=0.5,box.lty=0) #
+  legend("topright",legend=unique(xdata$sample_group),col=unique(group_colors[xdata$sample_group]), lty=1, cex=1,box.lty=0) #
   dev.off()
 }
 
 # F_boxplotxdata(xdata_NoB=filterFile(xdata_MixAA_Neg, file = c(4:21)),
 #                Name=NewName[5:22],
 #                group_colors = c("coral1","coral2","coral3","cyan1","cyan2","cyan3"))
-xdata_MixAA_Pos_NoB <- filterFile(xdata_MixAA_Pos, file = c(4:21))
-group_colors <- c("black","coral1","coral2","coral3","cyan1","cyan2","cyan3")
+# xdata_MixAA_Pos_NoB <- filterFile(xdata_MixAA_Pos, file = c(4:21))
+group_colors <- c("coral1","coral2","coral3","cyan1","cyan2","cyan3")
 names(group_colors) <- unique(xdata_MixAA_Pos$sample_group)
-F_boxplotxdata(xdata=xdata_MixAA_Pos_NoB, Cell = 'Peak intensity', Keywords = "ACN.*",group_colors = group_colors)
+F_boxplotxdata(xdata=xdata_MixAA_Pos, Cell = 'Peak intensity', Keywords = "ACN.*",group_colors = group_colors)
 
 # xdata_MixAA_Pos22_NoB <- filterFile(xdata_MixAA_Pos22, file = c(4:9))
 # group_colors <- c("black","coral1","cyan1")
@@ -183,6 +183,436 @@ setwd(Path)
 Exp_2020 <- F_AddMzRtIso(xdata = xdata_MixAA_Pos, Cell = "2020", Mode = "positive")
 # Exp_2022 <- F_AddMzRtIso(xdata = xdata_MixAA_Pos22, Cell = "2022", Mode = "positive")
 #### InitDataObjects ####
+.get.mSet <- function(mSetObj=NA){
+    return(mSetObj)
+}
+.set.mSet <- function(mSetObj=NA){
+  return(mSetObj);
+}
+Plot3D <- function(x, y = NULL, z = NULL, color = par("col"), pch = NULL,
+                   main = NULL, sub = NULL, xlim = NULL, ylim = NULL, zlim = NULL,
+                   xlab = NULL, ylab = NULL, zlab = NULL, scale.y = 1, angle = 40,
+                   axis = TRUE, tick.marks = TRUE, label.tick.marks = TRUE,
+                   x.ticklabs = NULL, y.ticklabs = NULL, z.ticklabs = NULL,
+                   y.margin.add = 0, grid = TRUE, box = TRUE, lab = par("lab"),
+                   lab.z = mean(lab[1:2]), type = "p", highlight.3d = FALSE,
+                   mar = c(5, 3, 4, 3) + 0.1, col.axis = par("col.axis"),
+                   col.grid = "grey", col.lab = par("col.lab"), cex.symbols = par("cex"),
+                   cex.axis = 0.8 * par("cex.axis"), cex.lab = par("cex.lab"),
+                   font.axis = par("font.axis"), font.lab = par("font.lab"),
+                   lty.axis = par("lty"), lty.grid = 2, lty.hide = 1,
+                   lty.hplot = par("lty"), log = "", ...)
+# log not yet implemented
+{
+  ## Uwe Ligges <ligges@statistik.tu-dortmund.de>,
+  ## http://www.statistik.tu-dortmund.de/~ligges
+  ##
+  ## For MANY ideas and improvements thanks to Martin Maechler!!!
+  ## Parts of the help files are stolen from the standard plotting functions in R.
+  
+  mem.par <- par(mar = mar)
+  x.scal <- y.scal <- z.scal <- 1
+  xlabel <- if (!missing(x)) deparse(substitute(x))
+  ylabel <- if (!missing(y)) deparse(substitute(y))
+  zlabel <- if (!missing(z)) deparse(substitute(z))
+  
+  ## color as part of `x' (data.frame or list):
+  if(!is.null(d <- dim(x)) && (length(d) == 2) && (d[2] >= 4))
+    color <- x[,4]
+  else if(is.list(x) && !is.null(x$color))
+    color <- x$color
+  
+  ## convert 'anything' -> vector
+  xyz <- xyz.coords(x=x, y=y, z=z, xlab=xlabel, ylab=ylabel, zlab=zlabel,
+                    log=log)
+  if(is.null(xlab)) { xlab <- xyz$xlab; if(is.null(xlab)) xlab <- "" }
+  if(is.null(ylab)) { ylab <- xyz$ylab; if(is.null(ylab)) ylab <- "" }
+  if(is.null(zlab)) { zlab <- xyz$zlab; if(is.null(zlab)) zlab <- "" }
+  
+  if(length(color) == 1)
+    color <- rep(color, length(xyz$x))
+  else if(length(color) != length(xyz$x))
+    stop("length(color) ", "must be equal length(x) or 1")
+  
+  angle <- (angle %% 360) / 90
+  yz.f <- scale.y * abs(if(angle < 1) angle else if(angle > 3) angle - 4 else 2 - angle)
+  yx.f <- scale.y * (if(angle < 2) 1 - angle else angle - 3)
+  if(angle > 2) { ## switch y and x axis to ensure righthand oriented coord.
+    temp <- xyz$x; xyz$x <- xyz$y; xyz$y <- temp
+    temp <- xlab;  xlab <- ylab;   ylab <- temp
+    temp <- xlim;  xlim <- ylim;   ylim <- temp
+  }
+  angle.1 <- (1 < angle && angle < 2) || angle > 3
+  angle.2 <- 1 <= angle && angle <= 3
+  dat <- cbind(as.data.frame(xyz[c("x","y","z")]), col = color)
+  
+  n <- nrow(dat);
+  y.range <- range(dat$y[is.finite(dat$y)])
+  
+  ### 3D-highlighting / colors / sort by y
+  if(type == "p" || type == "h") {
+    y.ord <- rev(order(dat$y))
+    dat <- dat[y.ord, ]
+    if(length(pch) > 1)
+      if(length(pch) != length(y.ord))
+        stop("length(pch) ", "must be equal length(x) or 1")
+    else pch <- pch[y.ord]
+    daty <- dat$y
+    daty[!is.finite(daty)] <- mean(daty[is.finite(daty)])
+    if(highlight.3d && !(all(diff(daty) == 0)))
+      dat$col <- rgb(seq(0, 1, length = n) * (y.range[2] - daty) / diff(y.range), g=0, b=0)
+  }
+  
+  ### optim. axis scaling
+  p.lab <- par("lab")
+  ## Y
+  y.range <- range(dat$y[is.finite(dat$y)], ylim)
+  y.prty <- pretty(y.range, n = lab[2],
+                   min.n = max(1, min(.5 * lab[2], p.lab[2])))
+  y.scal <- round(diff(y.prty[1:2]), digits = 12)
+  y.add <- min(y.prty)
+  dat$y <- (dat$y - y.add) / y.scal
+  y.max <- (max(y.prty) - y.add) / y.scal
+  
+  x.range <- range(dat$x[is.finite(dat$x)], xlim)
+  x.prty <- pretty(x.range, n = lab[1],
+                   min.n = max(1, min(.5 * lab[1], p.lab[1])))
+  x.scal <- round(diff(x.prty[1:2]), digits = 12)
+  dat$x <- dat$x / x.scal
+  x.range <- range(x.prty) / x.scal
+  x.max <- ceiling(x.range[2])
+  x.min <-   floor(x.range[1])
+  if(!is.null(xlim)) {
+    x.max <- max(x.max, ceiling(xlim[2] / x.scal))
+    x.min <- min(x.min,   floor(xlim[1] / x.scal))
+  }
+  x.range <- range(x.min, x.max)
+  ## Z
+  z.range <- range(dat$z[is.finite(dat$z)], zlim)
+  z.prty <- pretty(z.range, n = lab.z,
+                   min.n = max(1, min(.5 * lab.z, p.lab[2])))
+  z.scal <- round(diff(z.prty[1:2]), digits = 12)
+  dat$z <- dat$z / z.scal
+  z.range <- range(z.prty) / z.scal
+  z.max <- ceiling(z.range[2])
+  z.min <-   floor(z.range[1])
+  if(!is.null(zlim)) {
+    z.max <- max(z.max, ceiling(zlim[2] / z.scal))
+    z.min <- min(z.min,   floor(zlim[1] / z.scal))
+  }
+  z.range <- range(z.min, z.max)
+  
+  ### init graphics
+  plot.new()
+  if(angle.2) {x1 <- x.min + yx.f * y.max; x2 <- x.max}
+  else        {x1 <- x.min; x2 <- x.max + yx.f * y.max}
+  plot.window(c(x1, x2), c(z.min, z.max + yz.f * y.max))
+  temp <- strwidth(format(rev(y.prty))[1], cex = cex.axis/par("cex"))
+  if(angle.2) x1 <- x1 - temp - y.margin.add
+  else        x2 <- x2 + temp + y.margin.add
+  plot.window(c(x1, x2), c(z.min, z.max + yz.f * y.max))
+  if(angle > 2) par("usr" = par("usr")[c(2, 1, 3:4)])
+  usr <- par("usr") # we have to remind it for use in closures
+  title(main, sub, ...)
+  
+  ### draw axis, tick marks, labels, grid, ...
+  xx <- if(angle.2) c(x.min, x.max) else c(x.max, x.min)
+  if(grid) {
+    ## grids
+    ###################
+    # XY wall
+    i <- x.min:x.max;
+    segments(i, z.min, i + (yx.f * y.max), yz.f * y.max + z.min,
+             col = col.grid, lty = lty.grid);
+    
+    i <- 0:y.max;
+    segments(x.min + (i * yx.f), i * yz.f + z.min,
+             x.max + (i * yx.f), i * yz.f + z.min,
+             col = col.grid, lty = lty.grid);
+    
+    ######################
+    # XZ wall
+    # verticle lines
+    temp <- yx.f * y.max;
+    temp1 <- yz.f * y.max;
+    i <- (x.min + temp):(x.max + temp);
+    segments(i, z.min + temp1, i, z.max + temp1,
+             col = col.grid, lty = lty.grid);
+    
+    # horizontal lines
+    i <- (z.min + temp1):(z.max + temp1);
+    segments(x.min + temp, i, x.max + temp, i,
+             col = col.grid, lty = lty.grid)
+    
+    
+    ##################
+    # YZ wall
+    # horizontal lines
+    i <- xx[2]:x.min;
+    mm <- z.min:z.max;
+    segments(i, mm, i + temp, mm + temp1,
+             col = col.grid, lty = lty.grid);
+    # verticle lines
+    i <- 0:y.max;
+    segments(x.min + (i * yx.f), i * yz.f + z.min,
+             xx[2] + (i * yx.f), i * yz.f + z.max,
+             col = col.grid, lty = lty.grid)
+    
+    
+    # make the axis into solid line
+    segments(x.min, z.min, x.min + (yx.f * y.max), yz.f * y.max + z.min,
+             col = col.grid, lty = lty.hide);
+    segments(x.max, z.min, x.max + (yx.f * y.max), yz.f * y.max + z.min,
+             col = col.axis, lty = lty.hide);
+    segments(x.min + (y.max * yx.f), y.max * yz.f + z.min,
+             x.max + (y.max* yx.f), y.max * yz.f + z.min,
+             col = col.grid, lty = lty.hide);
+    segments(x.min + temp, z.min + temp1, x.min + temp, z.max + temp1,
+             col = col.grid, lty = lty.hide);
+    segments(x.max + temp, z.min + temp1, x.max + temp, z.max + temp1,
+             col = col.axis, lty = lty.hide);
+    segments(x.min + temp, z.max + temp1, x.max + temp, z.max + temp1,
+             col = col.axis, lty = lty.hide);
+    segments(xx[2], z.max, xx[2] + temp, z.max + temp1,
+             col = col.axis, lty = lty.hide);
+  }
+  if(axis) {
+    if(tick.marks) { ## tick marks
+      xtl <- (z.max - z.min) * (tcl <- -par("tcl")) / 50
+      ztl <- (x.max - x.min) * tcl / 50
+      mysegs <- function(x0,y0, x1,y1)
+        segments(x0,y0, x1,y1, col=col.axis, lty=lty.axis)
+      ## Y
+      i.y <- 0:y.max
+      mysegs(yx.f * i.y - ztl + xx[1], yz.f * i.y + z.min,
+             yx.f * i.y + ztl + xx[1], yz.f * i.y + z.min)
+      ## X
+      i.x <- x.min:x.max
+      mysegs(i.x, -xtl + z.min, i.x, xtl + z.min)
+      ## Z
+      i.z <- z.min:z.max
+      mysegs(-ztl + xx[2], i.z, ztl + xx[2], i.z)
+      
+      if(label.tick.marks) { ## label tick marks
+        las <- par("las")
+        mytext <- function(labels, side, at, ...)
+          mtext(text = labels, side = side, at = at, line = -.5,
+                col=col.lab, cex=cex.axis, font=font.lab, ...)
+        ## X
+        if(is.null(x.ticklabs))
+          x.ticklabs <- format(i.x * x.scal)
+        mytext(x.ticklabs, side = 1, at = i.x)
+        ## Z
+        if(is.null(z.ticklabs))
+          z.ticklabs <- format(i.z * z.scal)
+        mytext(z.ticklabs, side = if(angle.1) 4 else 2, at = i.z,
+               adj = if(0 < las && las < 3) 1 else NA)
+        ## Y
+        temp <- if(angle > 2) rev(i.y) else i.y ## turn y-labels around
+        if(is.null(y.ticklabs))
+          y.ticklabs <- format(y.prty)
+        else if (angle > 2)
+          y.ticklabs <- rev(y.ticklabs)
+        text(i.y * yx.f + xx[1],
+             i.y * yz.f + z.min, y.ticklabs,
+             pos=if(angle.1) 2 else 4, offset=1,
+             col=col.lab, cex=cex.axis/par("cex"), font=font.lab)
+      }
+    }
+    
+    ## axis and labels
+    
+    mytext2 <- function(lab, side, line, at)
+      mtext(lab, side = side, line = line, at = at, col = col.lab,
+            cex = cex.lab, font = font.axis, las = 0)
+    ## X
+    lines(c(x.min, x.max), c(z.min, z.min), col = col.axis, lty = lty.axis)
+    mytext2(xlab, 1, line = 1.5, at = mean(x.range))
+    ## Y
+    lines(xx[1] + c(0, y.max * yx.f), c(z.min, y.max * yz.f + z.min),
+          col = col.axis, lty = lty.axis)
+    mytext2(ylab, if(angle.1) 2 else 4, line= 0.5, at = z.min + y.max * yz.f)
+    
+    ## Z
+    lines(xx[c(2,2)], c(z.min, z.max), col = col.axis, lty = lty.axis)
+    mytext2(zlab, if(angle.1) 4 else 2, line= 1.5, at = mean(z.range))
+    
+  }
+  
+  ### plot points
+  x <- dat$x + (dat$y * yx.f)
+  z <- dat$z + (dat$y * yz.f)
+  col <- as.character(dat$col)
+  if(type == "h") {
+    z2 <- dat$y * yz.f + z.min
+    segments(x, z, x, z2, col = col, cex = cex.symbols, lty = lty.hplot, ...)
+    points(x, z, type = "p", col = col, pch = pch, cex = cex.symbols, ...)
+  }
+  else points(x, z, type = type, col = col, pch = pch, cex = cex.symbols, ...)
+  
+  ### box-lines in front of points (overlay)
+  if(axis && box) {
+    lines(c(x.min, x.max), c(z.max, z.max),
+          col = col.axis, lty = lty.axis)
+    lines(c(0, y.max * yx.f) + x.max, c(0, y.max * yz.f) + z.max,
+          col = col.axis, lty = lty.axis)
+    lines(xx[c(1,1)], c(z.min, z.max), col = col.axis, lty = lty.axis)
+  }
+  
+  
+  # par(mem.par) # we MUST NOT set the margins back
+  ### Return Function Object
+  ob <- ls() ## remove all unused objects from the result's enviroment:
+  rm(list = ob[!ob %in% c("angle", "mar", "usr", "x.scal", "y.scal", "z.scal", "yx.f",
+                          "yz.f", "y.add", "z.min", "z.max", "x.min", "x.max", "y.max",
+                          "x.prty", "y.prty", "z.prty")])
+  rm(ob)
+  invisible(list(
+    xyz.convert = function(x, y=NULL, z=NULL) {
+      xyz <- xyz.coords(x, y, z)
+      if(angle > 2) { ## switch y and x axis to ensure righthand oriented coord.
+        temp <- xyz$x; xyz$x <- xyz$y; xyz$y <- temp
+      }
+      y <- (xyz$y - y.add) / y.scal
+      return(list(x = xyz$x / x.scal + yx.f * y,
+                  y = xyz$z / z.scal + yz.f * y))
+    },
+    points3d = function(x, y = NULL, z = NULL, type = "p", ...) {
+      xyz <- xyz.coords(x, y, z)
+      if(angle > 2) { ## switch y and x axis to ensure righthand oriented coord.
+        temp <- xyz$x; xyz$x <- xyz$y; xyz$y <- temp
+      }
+      y2 <- (xyz$y - y.add) / y.scal
+      x <- xyz$x / x.scal + yx.f * y2
+      y <- xyz$z / z.scal + yz.f * y2
+      mem.par <- par(mar = mar, usr = usr)
+      on.exit(par(mem.par))
+      if(type == "h") {
+        y2 <- z.min + yz.f * y2
+        segments(x, y, x, y2, ...)
+        points(x, y, type = "p", ...)
+      }
+      else points(x, y, type = type, ...)
+    },
+    plane3d = function(Intercept, x.coef = NULL, y.coef = NULL,
+                       lty = "dashed", lty.box = NULL, ...){
+      if(!is.atomic(Intercept) && !is.null(coef(Intercept))) Intercept <- coef(Intercept)
+      if(is.null(lty.box)) lty.box <- lty
+      if(is.null(x.coef) && length(Intercept) == 3){
+        x.coef <- Intercept[if(angle > 2) 3 else 2]
+        y.coef <- Intercept[if(angle > 2) 2 else 3]
+        Intercept <- Intercept[1]
+      }
+      mem.par <- par(mar = mar, usr = usr)
+      on.exit(par(mem.par))
+      x <- x.min:x.max
+      ltya <- c(lty.box, rep(lty, length(x)-2), lty.box)
+      x.coef <- x.coef * x.scal
+      z1 <- (Intercept + x * x.coef + y.add * y.coef) / z.scal
+      z2 <- (Intercept + x * x.coef +
+               (y.max * y.scal + y.add) * y.coef) / z.scal
+      segments(x, z1, x + y.max * yx.f, z2 + yz.f * y.max, lty = ltya, ...)
+      y <- 0:y.max
+      ltya <- c(lty.box, rep(lty, length(y)-2), lty.box)
+      y.coef <- (y * y.scal + y.add) * y.coef
+      z1 <- (Intercept + x.min * x.coef + y.coef) / z.scal
+      z2 <- (Intercept + x.max * x.coef + y.coef) / z.scal
+      segments(x.min + y * yx.f, z1 + y * yz.f,
+               x.max + y * yx.f, z2 + y * yz.f, lty = ltya, ...)
+    },
+    
+    wall3d = function(Intercept, x.coef = NULL, y.coef = NULL,
+                      lty = "dashed", lty.box = NULL, ...){
+      if(!is.atomic(Intercept) && !is.null(coef(Intercept))) Intercept <- coef(Intercept)
+      if(is.null(lty.box)) lty.box <- lty
+      if(is.null(x.coef) && length(Intercept) == 3){
+        x.coef <- Intercept[if(angle > 2) 3 else 2]
+        y.coef <- Intercept[if(angle > 2) 2 else 3]
+        Intercept <- Intercept[1]
+      }
+      mem.par <- par(mar = mar, usr = usr)
+      on.exit(par(mem.par))
+      x <- x.min:x.max
+      ltya <- c(lty.box, rep(lty, length(x)-2), lty.box)
+      x.coef <- x.coef * x.scal
+      z1 <- (Intercept + x * x.coef + y.add * y.coef) / z.scal
+      z2 <- (Intercept + x * x.coef +
+               (y.max * y.scal + y.add) * y.coef) / z.scal
+      segments(x, z1, x + y.max * yx.f, z2 + yz.f * y.max, lty = ltya, ...)
+      y <- 0:y.max
+      ltya <- c(lty.box, rep(lty, length(y)-2), lty.box)
+      y.coef <- (y * y.scal + y.add) * y.coef
+      z1 <- (Intercept + x.min * x.coef + y.coef) / z.scal
+      z2 <- (Intercept + x.max * x.coef + y.coef) / z.scal
+      segments(x.min + y * yx.f, z1 + y * yz.f,
+               x.max + y * yx.f, z2 + y * yz.f, lty = ltya, ...)
+    },
+    box3d = function(...){
+      mem.par <- par(mar = mar, usr = usr)
+      on.exit(par(mem.par))
+      lines(c(x.min, x.max), c(z.max, z.max), ...)
+      lines(c(0, y.max * yx.f) + x.max, c(0, y.max * yz.f) + z.max, ...)
+      lines(c(0, y.max * yx.f) + x.min, c(0, y.max * yz.f) + z.max, ...)
+      lines(c(x.max, x.max), c(z.min, z.max), ...)
+      lines(c(x.min, x.min), c(z.min, z.max), ...)
+      lines(c(x.min, x.max), c(z.min, z.min), ...)
+    }
+  ))
+}
+PlotPLS3DScoreImg<-function(mSetObj=NA, imgName, format="png", dpi=72, width=NA, inx1, inx2, inx3, angl){
+  
+  mSetObj <- .get.mSet(mSetObj);
+  
+  imgName = paste(imgName, "dpi", dpi, ".", format, sep="");
+  if(is.na(width)){
+    w <- 9;
+  }else if(width == 0){
+    w <- 7.2;
+  }else{
+    w <- width;
+  }
+  h <- w;
+  
+  mSetObj$imgSet$pls.score3d <- imgName;
+  
+  Cairo::Cairo(file = imgName, unit="in", dpi=dpi, width=w, height=h, type=format, bg="white");
+  par(mar=c(5,5,3,3));
+  
+  xlabel <- paste("Component", inx1, "(", round(100*mSetObj$analSet$plsr$Xvar[inx1]/mSetObj$analSet$plsr$Xtotvar,1), "%)");
+  ylabel <- paste("Component", inx2, "(", round(100*mSetObj$analSet$plsr$Xvar[inx2]/mSetObj$analSet$plsr$Xtotvar,1), "%)");
+  zlabel <- paste("Component", inx3, "(", round(100*mSetObj$analSet$plsr$Xvar[inx3]/mSetObj$analSet$plsr$Xtotvar,1), "%)");
+  
+  # cols <- GetColorSchema(mSetObj);
+  cols <<- c(rep('coral1',9),rep('cyan1',9));
+  legend.nm <- unique(as.character(mSetObj$dataSet$cls));
+  uniq.cols <- unique(cols);
+  pchs <- as.numeric(mSetObj$dataSet$cls)+1;
+  uniq.pchs <- unique(pchs);
+  Plot3D(mSetObj$analSet$plsr$score[,inx1], mSetObj$analSet$plsr$score[,inx2], mSetObj$analSet$plsr$score[,inx3], xlab= xlabel, ylab=ylabel,
+         zlab=zlabel, angle =angl, color=cols, pch=pchs, box=F);
+  legend("topleft", legend = legend.nm, pch=uniq.pchs, col=uniq.cols);
+  dev.off();
+  
+
+    # # 3D View using plotly
+    # if(length(uniq.pchs) > 3){
+    #   col <- RColorBrewer::brewer.pal(length(uniq.pchs), "Set3")
+    # }else{
+    #   col <- c("#1972A4", "#FF7070")
+    # }
+    # p <- plot_ly(x = mSetObj$analSet$plsr$score[, inx1], y = mSetObj$analSet$plsr$score[, inx2], z = mSetObj$analSet$plsr$score[, inx3],
+    #              color = mSetObj$dataSet$cls, colors = col) 
+    # p <- add_markers(p, sizes = 5)
+    # p <- layout(p, scene = list(xaxis = list(title = xlabel),
+    #                             yaxis = list(title = ylabel),
+    #                             zaxis = list(title = zlabel)))
+    # 
+    # mSetObj$imgSet$plsda.3d <- p;
+    # print("The Interactive 3D PLS-DA plot has been created, please find it in mSet$imgSet$plsda.3d.")
+    # 
+    # 
+  return(.set.mSet(mSetObj));
+}
 F_InitDataObjects<-function(FileName, Exp){
   rm(mSet)
   mSet <- InitDataObjects("pktable", "stat", FALSE) # is a peak table ("pktable") and that statistical analysis will be performed ("stat"),data is not paired
@@ -315,7 +745,7 @@ F_Mummichog <- function(Cell, Exp){
 }
 setwd(Path)
 mMum_2020 <- F_Mummichog(Cell = '2020', Exp = Exp_2020)
-#### Create the consensus spectra ####
+#### Create the consensus library spectra ####
 ## Link the library MoNA-export-LC-MS-MS_Spectra
 MoNAcon <- DBI::dbConnect(RSQLite::SQLite(), "d:/github/MetGUI/input/MoNA-export-LC-MS-MS_Spectra.sqlite")
 library_spectra_meta <- MoNAcon %>% dplyr::tbl("library_spectra_meta") %>% dplyr::collect() %>% as.data.table(.)
@@ -335,15 +765,21 @@ MetaL <- library_spectra_meta[is.na(instrument) | instrument %in%
 MetaL[abs(precursor_mz-205.0972)<0.01]$name
 MetaL[,inchikey_14:=sub(inchikey_id,pattern = "-.*",replacement = "",perl = TRUE)] # only use top 14 characters
 MetaL[,inchikey_14_precursor_type:=paste0(inchikey_14,'_',precursor_type)]
+MetaL[,inchikey_14_precursor_type_instrument:=paste0(inchikey_14,'_',precursor_type,'_',instrument)]
 MetaL[,inchikey_14_precursor_mz:=paste0(inchikey_14,'_',precursor_mz)]
 unique(MetaL$polarity)
 MetaL <- MetaL[polarity!='N']
+nrow(MetaL) # 38540 raw spectra from Massbank
+length(unique(MetaL$inchikey_14_precursor_type)) #10238
+length(unique(MetaL$inchikey_14_precursor_type_instrument)) #11074
+length(unique(MetaL$inchikey_14_precursor_mz)) #10978
 ## Start creating conSensus library_spectra
 library_spectra_Sensus <- data.table()
 
 for (inchi in unique(MetaL$inchikey_14_precursor_mz)) {
   ## Extract the meta id related to each unique inchikey
-  # inchi <- 'PMMYEEVYMWASQN_133.07'
+  # inchi <- 'MTCFGRXMJLQNBG_[M+H]+_LTQ Orbitrap XL, Thermo Scientfic; HP-1100 HPLC, Agilent'
+  # inchi <- 'MTCFGRXMJLQNBG_106.04987'
   print(inchi)
   Selected <- MetaL[inchikey_14_precursor_mz==inchi]
   ## Extract MS2 spectra related to each meta id
@@ -354,7 +790,8 @@ for (inchi in unique(MetaL$inchikey_14_precursor_mz)) {
     ListMS2[[j]]<- SelectedMS2[,c('mz','i')] %>% setnames(.,'i','intensity') %>% as.matrix(.)
   }
   ## Combine peaks
-  Combined <- combinePeaks(ListMS2,ppm = 10, peaks = 'intersect',minProp = 0.5)
+  Combined <- combinePeaks(ListMS2,ppm = 10, peaks ='union') #, peaks ='intersect',minProp = 0.1
+  # Combined
   ## Add meta information
   CombinedMeta <- as.data.table(Combined) %>% setnames(.,'intensity','i') %>%
     .[,library_spectra_meta_id:=min(Selected$id)] %>% .[,inchikey_14_precursor_mz:=inchi]
@@ -364,7 +801,8 @@ unique(library_spectra_Sensus,by='inchikey_14_precursor_mz')
 # library_spectra_meta_Sensus$inchikey_14_precursor_mz
 
 ## Creat Sensus.sqlite
-con_Sensus <- DBI::dbConnect(RSQLite::SQLite(),'d:/github/MetGUI/input/Sensus.sqlite')
+con_Sensus <- DBI::dbConnect(RSQLite::SQLite(),'d:/github/MetGUI/input/Sensus0710.sqlite')
+l_dbPthValue <- 'd:/github/MetGUI/input/Sensus0710.sqlite'
 ## library_spectra_meta
 library_spectra_meta_Sensus <- MetaL[,-c('resolution')] %>%
   left_join(., metab_compound[,-c('name')], by='inchikey_id')
@@ -384,12 +822,14 @@ DBI::dbWriteTable(con_Sensus, name='metab_compound',value=metab_compound_Sensus,
 DBI::dbWriteTable(con_Sensus, name='library_spectra', value=library_spectra_Sensus, overwrite=T)
 DBI::dbDisconnect(con_Sensus)
 
-#### MS2 spectra matching based on the modified msPurity package ####
+#### Create the consensus query spectra ####
 ## Purity assesments and linking fragmentation to XCMS features
 cdfs <- dir("D:/VirtualMachineDisk/Hematology/Centroid/NormalVSHYP", full.names = TRUE,recursive = TRUE)
+cdfs
 pa <- purityA(cdfs,ilim = 0,isotopes = FALSE)
-View(pa)
+# View(pa)
 onDisk <- xdata_MixAA_Pos
+# onDisk <- xdata_MixAA_Pos
 # if (length(unique(msLevel(onDisk))) != 1) {
 #   onDisk <- filterMsLevel(onDisk, msLevel = 1)
 # } # to use MS1
@@ -398,22 +838,25 @@ View(pa_ft)
 pa_ft_fil <- filterFragSpectra(pa_ft) # filter the fragmentation spectra , allfrag = TRUE
 View(pa_ft_fil)
 pa_ft_fil_ave <- averageAllFragSpectra(pa_ft_fil) # treat the inter and intra fragmentation scans the same
-View(pa_ft_fil_ave)
-puritydf <- data.table(pa_ft_ave@puritydf)
-puritydf[abs(precursorMZ-122.027)<0.06]
+# View(pa_ft_fil_ave)
 
-q_dbPthValue <- createDatabase(pa_ft_fil_ave, onDisk, dbName = "q_dbPth0707.sqlite")
-q_dbPthValue <- 'd:/github/MetGUI/output/q_dbPth0707.sqlite'
+q_dbPthValue <- createDatabase(pa_ft_fil_ave, onDisk, dbName = "q_dbPth0708.sqlite")
+q_dbPthValue <- 'd:/github/MetGUI/output/q_dbPth0708.sqlite'
 qon <- DBI::dbConnect(RSQLite::SQLite(), q_dbPthValue)
 ## Extract from the query database the "c_peak_groups", which will be used for subset.
 c_peak_groups <- qon %>% dplyr::tbl("c_peak_groups") %>% dplyr::collect() %>% as.data.table(.)
 names(c_peak_groups)
 PeakGroups <- c_peak_groups[,c('mz','mzmin','mzmax','rt','rtmin','rtmax','grpid','grp_name')]
-View(PeakGroups)
+nrow(PeakGroups) # 2192 consensus spectra
+# View(PeakGroups)
+## Extract the query with the MS2 peaks
+s_peaks <- qon %>% dplyr::tbl("s_peaks") %>% dplyr::collect() %>% as.data.table(.)
 ## Extract the query with the related xcms groups
 s_peak_meta <- qon %>% dplyr::tbl("s_peak_meta") %>% dplyr::collect() %>% as.data.table(.)
 names(s_peak_meta)
-View(s_peak_meta)
+nrow(s_peak_meta)
+s_peak_meta_rbind <-s_peak_meta 
+# View(s_peak_meta)
 PeakMeta <- s_peak_meta[,c('precursor_mz','retention_time','grpid','pid','spectrum_type','precursorIntensity')]
 ## change the spectrum_type and grpid for s_peak_meta file
 s_peak_meta_withgrpid <- s_peak_meta[!is.na(grpid)]
@@ -430,34 +873,47 @@ s_peak_meta_nogrpid_join[mzmin>0, grpid:=Grpid]
 s_peak_meta_nogrpid_join[mzmin>0]
 s_peak_meta_rbind <- rbind(s_peak_meta_withgrpid, 
                            s_peak_meta_nogrpid_join[,-c('mzmin','mzmax','rtmin','rtmax','Grpid','grp_name')])
-# View(s_peak_meta_rbind[spectrum_type=='all'])
+nrow(s_peak_meta_rbind) # 51458 raw spectra from 18 experimental dataset
+## Check with the 20 AAs
+s_peak_meta_rbind$grpid <- as.numeric(s_peak_meta_rbind$grpid)
+s_peak_meta_rbind_PeakGroups <- left_join(s_peak_meta_rbind[spectrum_type=='all'],PeakGroups,by='grpid')
+s_peak_meta_rbind_PeakGroups_Check <- F_CheckMH20AA(DT=s_peak_meta_rbind_PeakGroups,MH20AA)
+View(s_peak_meta_rbind_PeakGroups_Check)
 # View(c_peak_groups)
 ## Update the s_peak_meta file in the database
 DBI::dbWriteTable(qon, name='s_peak_meta',value=s_peak_meta_rbind, overwrite = T)
-## Extract the query with the MS2 peaks
-s_peaks <- qon %>% dplyr::tbl("s_peaks") %>% dplyr::collect() %>% as.data.table(.)
-
-s_peak_meta_rbind$grpid <- as.numeric(s_peak_meta_rbind$grpid)
-s_peak_meta_rbind_PeakGroups <- left_join(s_peak_meta_rbind,PeakGroups,by='grpid')
-
-q_pidValue <- s_peak_meta_rbind[!is.na(grpid)]$pid
 DBI::dbDisconnect(qon)
 
+#### MS2 spectra matching based on the modified msPurity package ####
 ## Library search
-setwd(paste0(Path,'LibrarySearch/0707'))
+
+setwd(paste0(Path,'LibrarySearch/0710'))
 MRPValue <<- 7500
 # MRPValue <<- 17500
 RefMZValue <<- 400
 # RefMZValue <<- 200
+q_pidValue <- s_peak_meta_rbind[!is.na(grpid)]$pid
+l_dbPthValue0710 <- 'd:/github/MetGUI/input/Sensus0710.sqlite'
+l_dbPthValue0708 <- 'd:/github/MetGUI/input/Sensus0708.sqlite'
+l_dbPthValueSensus <- 'd:/github/MetGUI/input/Sensus.sqlite'
 for (id in unique(q_pidValue)) {
-  # id <- 31409
-  spectralMatching(q_dbPth=q_dbPthValue, l_dbPth=l_dbPthValue,l_ppmPrec = 50, q_pids= id, mztol = NA)
+  # id <- 44036
+  spectralMatching(q_dbPth=q_dbPthValue, l_dbPth=l_dbPthValue0710,
+                   l_ppmPrec = 20, q_pids= id, mztol = NA)
 }
+## For testing purpose using the 20 AAs
+# q_pidAA <-c(51120,7696,44036,9621,30286,51162,51163,51170,51173,51182,10757,13381,1226,5031,931,2196,51208,955)
+# for (id in unique(q_pidAA)) {
+#   # id <- 44036
+#   spectralMatching(q_dbPth=q_dbPthValue, l_dbPth=l_dbPthValue0710,
+#                    l_ppmPrec = 20, q_pids= id, mztol = NA)
+# }
+
 
 ## Merge the files together, count candidates
-Dir <- paste0(Path, "LibrarySearch/0707")
+Dir <- paste0(Path, "LibrarySearch/0710")
 setwd(Dir)
-SingleWhole <- F_MergeLibrarySearch(Dir= paste0(Dir))
+MergedDT <- F_MergeLibrarySearch(Dir= paste0(Dir))
 setwd(Path)
 ## Add meta and stat
 F_AddMetaStat <- function(DT,Meta,Vol){
@@ -469,7 +925,7 @@ F_AddMetaStat <- function(DT,Meta,Vol){
   DT <- DT[!is.na(FC)] # filtration based on the Volcano NA, as these are the features after isotop filtration
   return(DT)
 }
-SingleWhole <- F_AddMetaStat(DT=SingleWhole,Meta=s_peak_meta_rbind_PeakGroups,Vol=Volcano)
+SingleWhole <- F_AddMetaStat(DT=MergedDT,Meta=s_peak_meta_rbind_PeakGroups,Vol=Volcano)
 
 ## Check the identification using the 20 AAs
 MH20AA<-data.table(read_excel(paste0(Path,"Reference/AAMass.xlsx"),sheet="M+H")) 
@@ -490,7 +946,7 @@ F_CheckMH20AA <- function(DT, MH20AA){
 SingleWhole[abs(library_precursor_mz - 106.0499 )<0.02]
 SingleWhole_Check <- F_CheckMH20AA(DT=SingleWhole,MH20AA)
 View(SingleWhole_Check)
-View(SingleWhole)
+
 # write.csv(SingleWhole_Check, 'SingleWhole_Check.csv',row.names = F)
 PeakGroups[grpid==54] # Check the reason for the missing 20 AAs
 s_peaks[pid==24620]
@@ -499,18 +955,19 @@ library_spectra_Sensus[library_spectra_meta_id==39160]
 library_spectra_Sensus[inchikey_14_precursor_mz=='DHMQDGOQFOQNFH_76.0394']
 
 ## Precursor filtration
-F_PrecursorFilt <- function(DT){
+F_PrecursorFilt <- function(DT, MatchCutoff=1){
   print(paste0('before filtration ',nrow(DT)))
   DT[, MZDiff := abs(library_precursor_mz - query_precursor_mz)]
   DT[, MS1Tol := F_CalPMMT(library_precursor_mz, 30000, 400)]
   # DT <- DT[MZDiff < MS1Tol]
-  DT <- DT[Match >0]
+  DT <- DT[Match >= MatchCutoff]
   print(paste0('after match numbers filtration ',nrow(DT)))
   # F_CSV(DT)
   # View(DT)
   return(DT)
 }
-SingleWhole_Pre <- F_PrecursorFilt(DT=SingleWhole)
+SingleWhole_Pre <- F_PrecursorFilt(DT=SingleWhole,MatchCutoff = 2)
+nrow(SingleWhole_Pre) # 1772    candidates
 # unique(SingleWhole$query_qpid)
 # s_peak_meta_rbind_PeakGroups[!is.na(grpid)]
 # write.csv(SingleWhole_Pre, 'SingleWhole_Pre.csv',row.names = F)
@@ -532,6 +989,9 @@ F_FDRCutoff <- function(DT, MatchCutoff=2,FDRCutoff=0.05, XcorrCutoff=0,TopCutof
   setorder(Dynamic,-Thres) # decreasing of the score according to dpc
   DynamicDis <- Dynamic[dpc.xcorr>XcorrCutoff]
   print('Calculate the estimated qValue based on Pep accumulation')
+  # Lambda<-getPEPFromScoreLambda(DynamicDis[Database=='Target']$Thres, DynamicDis[Database=='Decoy']$Thres,
+  #                               paste0('FDR cutoff prediction DynamicCurve'))
+  
   LambdaDynamic<-F_getPEPFromScoreLambda(DynamicDis[Database=='Target']$Thres, #& Thres>ThresCutoff
                                          DynamicDis[Database=='Decoy']$Thres, paste0('FDR cutoff prediction DynamicCurve'))
   Dynamic[,pep:=sapply(Dynamic$Thres, LambdaDynamic[[1]])]
@@ -570,14 +1030,18 @@ F_FDRCutoff <- function(DT, MatchCutoff=2,FDRCutoff=0.05, XcorrCutoff=0,TopCutof
   return(Dynamic[Database=='Target'])
 }
 
-SingleWhole_Pre_Match2 <- F_FDRCutoff(DT = SingleWhole_Pre, FileName='SingleWhole_Pre_Match2',
+SingleWhole_Pre_Top10 <- F_FDRCutoff(DT = SingleWhole_Pre, FileName='SingleWhole_Pre_Top10',
                                            MatchCutoff = 2,TopCutoff = 10, XcorrCutoff = 0.1)
-SingleWhole_Pre_Match2_Check <- F_CheckMH20AA(DT=SingleWhole_Pre_Match2,MH20AA) ## Check whether or not the 20 AAs are identified
-View(SingleWhole_Pre_Match2_Check)
+nrow(SingleWhole_Pre_Top10[qValue_Pep<=0.05]) #453 candidates
+SingleWhole_Pre_Top10_Check <- F_CheckMH20AA(DT=SingleWhole_Pre_Top10,MH20AA) ## Check whether or not the 20 AAs are identified
+View(SingleWhole_Pre_Top10_Check) # only Gly and Cys are not identified
+
 ## Select the top candidates for each query
-SingleWhole_Pre_Match2_Top <- setorder(SingleWhole_Pre_Match2, -Thres) %>% .[, head(.SD, 1), by='query_qpid'] 
-SingleWhole_Pre_Match2_Top_Check <- F_CheckMH20AA(DT=SingleWhole_Pre_Match2_Top,MH20AA) ## Check whether or not the 20 AAs are identified
-View(SingleWhole_Pre_Match2_Top_Check)
+SingleWhole_Pre_Top10_Uni <- setorder(SingleWhole_Pre_Top10, -Thres) %>% 
+  .[, head(.SD, 1), by='Sample'] %>% .[, head(.SD, 1), by='library_inchikey'] 
+nrow(SingleWhole_Pre_Top10_Uni[qValue_Pep<=0.05]) #88 candidates
+SingleWhole_Pre_Top10_Uni_Check <- F_CheckMH20AA(DT=SingleWhole_Pre_Top10_Uni,MH20AA) ## Check whether or not the 20 AAs are identified
+View(SingleWhole_Pre_Top10_Uni_Check) 
 
 
 #### Write results ####
@@ -588,34 +1052,23 @@ MumUp <- read.csv('d:/github/MetGUI/output/2020Up_matched_compound_stat.csv')
 MumDown <- read.csv('d:/github/MetGUI/output/2020Down_matched_compound_stat.csv')
 
 MetGUIResults <- list("Volcano" = Volcano, "SingleWhole_Pre" = SingleWhole_Pre,
-                      "SingleWhole_Pre_Match2" = SingleWhole_Pre_Match2,"SingleWhole_Pre_Match2_Top" = SingleWhole_Pre_Match2_Top,
-                      'EnriUp' = EnriUp, 'EnriDown' = EnriDown,"MumUp" = MumUp, 'MumDown'= MumDown) 
+                      "SingleWhole_Pre_Top10" = SingleWhole_Pre_Top10,
+                      "SingleWhole_Pre_Top10_Uni" = SingleWhole_Pre_Top10_Uni,
+                      'EnriUp' = EnriUp, 'EnriDown' = EnriDown,
+                      'MumUp' = MumUp, 'MumDown' = MumDown) 
 write_xlsx(MetGUIResults, "MetGUIResults.xlsx")
-
-## Extract the features that are related to 20 AAs
-NameCol <- c('mz','mzmin','mzmax','rt','rtmin','rtmax')
-setcolorder(Volcano, c(NameCol,colnames(Volcano)[!(colnames(Volcano) %in% NameCol )]))
-MH20AA<-data.table(read_excel(paste0(Path,"Reference/AAMass.xlsx"),sheet="M+H")) 
-NameCol <- c('mz','rt')
-setcolorder(MH20AA, c(NameCol,colnames(MH20AA)[!(colnames(MH20AA) %in% NameCol )]))
-VolcanoRep<-F_ReplaceMZRTRange(Volcano,lmz=1,lmzmin=2,lmzmax=3,lrt=4,lrtmin = 5,lrtmax = 6,
-                               MH20AA,rmz=1,rrt=2,tolmz=0.02,tolrt=10)
-Volcano_MH20AA <- left_join(VolcanoRep,MH20AA,by=c("mz","rt")) %>% data.table(.) %>% 
-  setorder(.,mz) %>% .[!is.na(letter3)]
-
-NameCol <- c('letter3','Monoisotopic','Adduct')
-setcolorder(Volcano_MH20AA, c(NameCol,colnames(Volcano_MH20AA)[!(colnames(Volcano_MH20AA) %in% NameCol )]))
-# View(Volcano)
-write_xlsx(Volcano_MH20AA, 'Volcano_MH20AA.xlsx') # add into the MetGUIResults.xlsx
+## Check the results of 20 AAs, save the results as Check sheet in MetGUIResults0710.xlsx
+## Creat new column called ShortName in the Volcano sheet, label AAs if exist, NA if not
 #### MS2 visualization ####
-setwd(paste0(Path,'MirrorPlot/Check0705'))
+setwd(paste0(Path,'MirrorPlot/Check0710'))
 F_SpectrumSingle <- function(x) {
-  query_qpid <- x[1]
-  query_precursor_mz <- as.numeric(x[3])
-  dpc.dynamic <- as.numeric(x[5])
+  query_qpid <- x[5]
+  query_precursor_mz <- as.numeric(x[2])
+  dpc.dynamic <- as.numeric(x[4])
   library_lpid <- x[6]
   library_entry_name <- x[7]
   library_inchikey <- x[8]
+  Match <- x[27]
   library_accession <- x[30]
   inchikey_14 <- sub(library_inchikey,pattern = "-.*",replacement = "",perl = TRUE)
   # library_lpid <- 27440
@@ -641,27 +1094,44 @@ F_SpectrumSingle <- function(x) {
     dpD <- dpc.dynamic
     # dpD <- 0.95
     ## Plot
-    png(paste('precursor', round(query_precursor_mz, digits = 3),'score', round(dpD, digits = 3), "inchikey_14", inchikey_14, 
+    png(paste('precursor', round(query_precursor_mz, digits = 3),'score', round(dpD, digits = 3), 
+              'Match',Match,"inchikey_14", inchikey_14, 
               # 'library_entry_name ',library_entry_name,
               "query_qpid",  query_qpid,"library_lpid", library_lpid,
               ".png"), width = 1000, height = 1100, res = 150)
     F_PlotMSMS(alignment = AlignDynamic, top_plot = top_plot, bottom_plot = bottom_plot)
-    title(paste("score", round(dpD, digits = 3),inchikey_14, library_entry_name), outer = F)
+    title(paste0("Score=", round(dpD, digits = 3),' Name=',library_entry_name), outer = F)
     dev.off()
   }
 }
-ForMirror <- data.table(read_xlsx(paste0(Path,"MetGUIResults0705.xlsx"), sheet = "Check"))
+
+ForMirror <- data.table(read_xlsx(paste0(Path,"MetGUIResults0710.xlsx"), sheet = "Check"))
 # ForMirror <- SingleWhole_Pre_Match2_Top %>% unique(.,by=c('query_qpid', 'library_lpid'))
 names(ForMirror)
 setorder(ForMirror, query_precursor_mz)
 for (id in (1:nrow(ForMirror))) {
-  # id <- 221
+  # id <- 21
   print(id)
   F_SpectrumSingle(x = as.matrix(ForMirror[id]))
 }
 
 
 #### EIC visualization for the 20 AAs ####
+## Extract the features that are related to 20 AAs
+NameCol <- c('mz','mzmin','mzmax','rt','rtmin','rtmax')
+setcolorder(Volcano, c(NameCol,colnames(Volcano)[!(colnames(Volcano) %in% NameCol )]))
+MH20AA<-data.table(read_excel(paste0(Path,"Reference/AAMass.xlsx"),sheet="M+H")) 
+NameCol <- c('mz','rt')
+setcolorder(MH20AA, c(NameCol,colnames(MH20AA)[!(colnames(MH20AA) %in% NameCol )]))
+VolcanoRep<-F_ReplaceMZRTRange(Volcano,lmz=1,lmzmin=2,lmzmax=3,lrt=4,lrtmin = 5,lrtmax = 6,
+                               MH20AA,rmz=1,rrt=2,tolmz=0.02,tolrt=10)
+Volcano_MH20AA <- left_join(VolcanoRep,MH20AA,by=c("mz","rt")) %>% data.table(.) %>% 
+  setorder(.,mz) %>% .[!is.na(letter3)]
+
+NameCol <- c('letter3','Monoisotopic','Adduct')
+setcolorder(Volcano_MH20AA, c(NameCol,colnames(Volcano_MH20AA)[!(colnames(Volcano_MH20AA) %in% NameCol )]))
+# View(Volcano)
+write_xlsx(Volcano_MH20AA, 'Volcano_MH20AA.xlsx') # add into the MetGUIResults.xlsx
 ## Extract the unique feature according to rt and mz
 matched_compound[,mzRound:=round(mz,digits = 2)]
 matched_compound[,rtRound:=round(rt,digits = 0)]
@@ -672,7 +1142,7 @@ MCUniPos<-MCUni[(adduct=="M+H [1+]")|(adduct=="M-H2O+H [1+]")|(adduct=="M+Na [1+
 ## EIC of the AA mixture
 names(MCUniPos)
 F_EICLoopMix<-function(DT,massI,addI,mzI,rtI,Raw){
-  group_colors <- c("Black","coral1","cyan1")
+  # group_colors <- c("Black","coral1","cyan1")
   names(group_colors) <- unique(Raw$sample_group)
   F_EICSingle<-function(x){ 
     ExactMass<-as.numeric(x[[massI]])
@@ -691,7 +1161,11 @@ F_EICLoopMix<-function(DT,massI,addI,mzI,rtI,Raw){
   }
   apply(DT,1,F_EICSingle)
 }
-F_EICLoopMix(MCUniPos,massI = 15,addI = 3,mzI = 16,rtI = 17,Raw=xdata_MixAA_Pos22)
+115.0633+1.007276
+ForMirror[,mass:=mz-1.007276]
+names(ForMirror)
+F_EICLoopMix(ForMirror[abs(mass-115.06)<0.06],massI = 62,addI = 9,mzI = 18,rtI = 21,Raw=xdata_MixAA_Pos)
+
 # F_EICLoopMix(unique(AAVolcano[(massRound==147.05)&(mode=="negative")],by="mass"),massI = 46,addI = 3,mzI = 47,rtI = 48,Raw_MixAA_Neg)
 # F_EICLoopMix(unique(AAVolcano[(mode=="positive")],by="mass"),
 #              massI = 46,addI = 3,mzI = 47,rtI = 48,xdata_MixAA_Pos)
@@ -705,18 +1179,12 @@ F_EICLoopPureAA(MCUniPos,massI = 15,addI = 3,mzI = 16,rtI = 17,Raw=xdata_PureAA_
 # F_EICLoopPureAA(AAVolcano[(massRound==147.05)&(mode=="negative")],massI = 46,addI = 3,mzI = 47,rtI = 48,xdata_PureAA_Neg)
 F_EICLoopPureAA(AAVolcano[(mode=="positive")],massI = 46,addI = 3,mzI = 47,rtI = 48,xdata_PureAA_Pos)
 
-## EIC of the pure AAs single
-ExactMass<-131.09
-Adduct<-'M+H'
-mz<-132.10
-rt<-453
-Raw<-xdata_PureAA_Pos22
-group_colors <- c("Orange","white") # for pure AAs
-
-Raw<-xdata_MixAA_Pos22
-group_colors <- c("Black","coral1","cyan1") # for mixture
-
-names(group_colors) <- unique(Raw$sample_group)
+## EIC of the mixture single
+ExactMass<-115.0633
+Adduct<-'M+H [1+]'
+mz<-116.0706
+rt<-518
+Raw<-xdata_MixAA_Pos
 mzValue<-c(mz-0.02,mz+0.02)
 rtValue<-c(rt-30,rt+30)
 EIC<-chromatogram(Raw, aggregationFun = "sum",mz = mzValue, rt = rtValue)
@@ -724,7 +1192,7 @@ name<-paste("mass",ExactMass,Adduct,"mz",mz,"rt",rt,"SingleOutput.png",seq="")
 png(file=name,res=200,width = 1000,height = 1000)
 plot(EIC, col = group_colors[Raw$sample_group],peakType = "none")
 legend("topright",legend=unique(Raw$sample_group),col=unique(group_colors[Raw$sample_group]), lty=1, cex=0.8,box.lty=0) 
-title(sub=paste("mass",ExactMass,Adduct,"mz",mz,"rt",rt,seq=""))
+title(sub=paste("mass",round(ExactMass,digits = 2),Adduct,"mz",round(mz,digits = 2),"rt",rt,seq=""))
 dev.off()
 
 
@@ -733,16 +1201,13 @@ dev.off()
 # https://bioconductor.org/packages/release/bioc/vignettes/EnhancedVolcano/inst/doc/EnhancedVolcano.html
 setwd(Path)
 ## Save the matched_compound.xlsx as matched_compound_20AAs.xlsx, add extra sheet named AA Volcano
-PureAA<-data.table(read_xlsx(paste0(Path,"Mzcloud/MetGUIResults0508.xlsx"),sheet="AA20")) # For pure AAs
-names(PureAA)
-Feature <-data.table(read_xlsx(paste0(Path,"Mzcloud/MetGUIResults0508.xlsx"),sheet="Feature")) # For features
-
-# names(Others)
-# nrow(PureAA)
-# nrow(Others)
-Others <- anti_join(Feature,PureAA,by='Sample')
-# Others <- anti_join(Others,PureAA,by='name')
-Merge<-rbind(Others,PureAA,fill = TRUE)
+# PureAA<-data.table(read_xlsx(paste0(Path,"MetGUIResults0710.xlsx"),sheet="Volcano")) %>% 
+#   .[!is.na(ShortName)] # For pure AAs
+# names(PureAA)
+# Feature <-data.table(read_xlsx(paste0(Path,"MetGUIResults0710.xlsx"),sheet="Check")) # For features
+# Others <- anti_join(Feature,PureAA,by='Sample')
+# Merge<-rbind(Others,PureAA,fill = TRUE)
+Merge <-data.table(read_xlsx(paste0(Path,"MetGUIResults0710.xlsx"),sheet="Volcano")) # For features
 head(Merge)
 setnames(Merge,"log2.FC.","log2FoldChange")
 setnames(Merge,"raw.pval","pvalue")
@@ -750,10 +1215,10 @@ setnames(Merge,"raw.pval","pvalue")
 # Merge<-unique(Merge,by=c("mz","rt","ShortName"))
 # Merge$adduct<-sub(Merge$adduct, pattern = " .*",replacement = "",perl = TRUE) # clean the adduct
 names(Merge)
-# Merge[,18:35]=lapply(Merge[,18:35],type.convert,as.is=TRUE)
-Merge[,Mean:=apply(Merge[,15:32],1,mean,na.rm=TRUE)]
-Merge[,ShortName:= letter3]
-DT = Merge
+Merge[,13:30]=lapply(Merge[,13:30],type.convert,as.is=TRUE)
+Merge[,Mean:=apply(Merge[,13:30],1,mean,na.rm=TRUE)]
+# Merge[,ShortName:= letter3]
+# DT = Merge
 
 F_VolcanoPlot<-function(DT,Name,FC=0.6,P=0.05,NSAA='pink',SigAA='red2',NSMet='lightblue',SigMet='royalblue'){ 
   # Customize colour
@@ -790,18 +1255,18 @@ F_VolcanoPlot<-function(DT,Name,FC=0.6,P=0.05,NSAA='pink',SigAA='red2',NSMet='li
                   #labSize = 4, drawConnectors = TRUE,
                   lab = DT$ShortName, 
                   selectLab = DT[,ShortName][which(names(keyvals.colour) %in% c('NSAA','SigAA'))],
-                  labSize = 2,drawConnectors = FALSE,
+                  labSize = 5,drawConnectors = FALSE, # increase label size 5
                   shapeCustom = keyvals.shape,
                   colCustom = keyvals.colour,colAlpha = 0.5,
                   title = Name,subtitle = "",
                   caption = "HYP / Norm, log2FC 0.6, pvalue 0.05",
-                  legendPosition = "right", legendLabSize = 7,
+                  legendPosition = "right", legendLabSize = 14,
                   gridlines.major=FALSE,gridlines.minor=FALSE,
                   widthConnectors = 0.5)
   ggsave(file=paste("VolcanoPlot",Name,".jpeg"),dpi=300)
 }
 
-F_VolcanoPlot(DT=Merge,"2020",FC=0.6,P=0.05)
+F_VolcanoPlot(DT=Merge,"Volcano plot",FC=0.6,P=0.05)
 
 
 
