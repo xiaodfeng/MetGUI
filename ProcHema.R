@@ -678,16 +678,14 @@ Volcano <- F_InitDataObjects(FileName = "2020Phe.csv", Exp = Exp_2020 )
 Volcano_Check <- F_CheckMH20AA(DT=Volcano,MH20AA)
 View(Volcano_Check)
 #### MS peaks to Pathways mummichog ####
-F_Mummichog <- function(Cell, Exp){
+F_Mummichog <- function(FT, Cell, Exp){
   ## reform the volcano results
-  Volcano<-data.table(read.csv(paste0(Cell,"Phe_Volcano.csv")))
-  names(Volcano)
   # write.csv(PheTimeUniExp,paste0(Cell,"PheTimeUniExp.csv"),row.names = FALSE)
-  MumInputUp <- Volcano[log2.FC.>0, c("mz", "mode", "raw.pval","log2.FC.", "rt")] %>% 
+  MumInputUp <- FT[log2.FC.>0, c("mz", "mode", "raw.pval","log2.FC.", "rt")] %>% 
     setnames(.,c("mz","raw.pval","log2.FC.","rt"),c("m.z","p.value","t.score","r.t"))
   MumInputUp <- unique(MumInputUp,by=c("m.z","r.t"))
   write.csv(MumInputUp,paste0(Cell,"MumInputUp.txt"),row.names = FALSE)
-  MumInputDown <- Volcano[log2.FC.<0, c("mz", "mode", "raw.pval","log2.FC.", "rt")] %>% 
+  MumInputDown <- FT[log2.FC.<0, c("mz", "mode", "raw.pval","log2.FC.", "rt")] %>% 
     setnames(.,c("mz","raw.pval","log2.FC.","rt"),c("m.z","p.value","t.score","r.t"))
   MumInputDown <- unique(MumInputDown,by=c("m.z","r.t"))
   write.csv(MumInputDown,paste0(Cell,"MumInputDown.txt"),row.names = FALSE)
@@ -732,10 +730,10 @@ F_Mummichog <- function(Cell, Exp){
     ## Add quantification value to the matched compound
     # names(matched_compound)
     # names(Exp)
-    setcolorder(Volcano, c('mz','mzmin','mzmax','rt','rtmin','rtmax',colnames(Volcano)[!(colnames(Volcano) %in% c('mz','mzmin','mzmax','rt','rtmin','rtmax'))]))
-    VolcanoRep<-F_ReplaceMZRTRange(Volcano,lmz=1,lmzmin=2,lmzmax=3,lrt=4,lrtmin = 5,lrtmax = 6,
+    setcolorder(FT, c('mz','mzmin','mzmax','rt','rtmin','rtmax',colnames(FT)[!(colnames(FT) %in% c('mz','mzmin','mzmax','rt','rtmin','rtmax'))]))
+    FTRep<-F_ReplaceMZRTRange(FT,lmz=1,lmzmin=2,lmzmax=3,lrt=4,lrtmin = 5,lrtmax = 6,
                                    matched_compound,rmz=1,rrt=2,tolmz=0,tolrt=0)
-    matched_compound_stat<-left_join(matched_compound,VolcanoRep,by=c("mz","rt")) %>% data.table(.)
+    matched_compound_stat<-left_join(matched_compound,FTRep,by=c("mz","rt")) %>% data.table(.)
     # matched_compound_stat<-left_join(matched_compound_stat,Volcano,by=c("Sample")) %>% data.table(.)
     write.csv(matched_compound_stat,paste0(Cell,Label,"_matched_compound_stat.csv"),row.names = FALSE)
   }
@@ -744,7 +742,59 @@ F_Mummichog <- function(Cell, Exp){
   return(mMum)
 }
 setwd(Path)
-mMum_2020 <- F_Mummichog(Cell = '2020', Exp = Exp_2020)
+#### Exclude the overlaping compounds between up or down regulated pathway ####
+## Find the overlaping compounds in common
+MumUp <- data.table(read_excel(paste0(Path,"Reference/MetGUIResults0723.xlsx"),sheet="MumUp"))
+MumDown <- data.table(read_excel(paste0(Path,"Reference/MetGUIResults0723.xlsx"),sheet="MumDown"))
+MumOver <- rbind(MumUp[kegg_id %in% MumDown$kegg_id],MumDown[kegg_id %in% MumUp$kegg_id])
+setorder(MumOver,kegg_id) # 366
+# write.csv(MumOver,'MumOver.csv')
+## Check the MumOver.csv files by hand with 50 already checked overlaps, Copy the checked MumOver.csv file into OverlapCheck sheet of the MetGUIResults0723.xlsx
+OverlapCheck <- data.table(read_excel(paste0(Path,"Reference/MetGUIResults0723.xlsx"),sheet="OverlapCheck")) 
+names(OverlapCheck) # 106
+## Exclude the feature that are not selected during the checking process
+FTToExclude <- MumOver[!Sample %in% OverlapCheck$Sample]
+FTToExclude[Sample=='FT0406']
+FTToExclude[Empirical.Compound=='EC00051'] # used to check whether or not the selection is correct
+unique(FTToExclude,by='Sample')
+VolcanoChecked <- Volcano[!Sample %in% FTToExclude$Sample]
+VolcanoChecked[Sample=='FT0406']
+## Pathway enrichment
+mMum_2020 <- F_Mummichog(FT=VolcanoChecked,Cell = '2020', Exp = Exp_2020)
+## Double check whether or not still overlap
+MumUp <- data.table(read.csv('d:/github/MetGUI/output/2020Up_matched_compound_stat.csv'))
+MumDown <- data.table(read.csv('d:/github/MetGUI/output/2020Down_matched_compound_stat.csv'))
+MumOver <- rbind(ComUp[kegg_id %in% ComDown$kegg_id],ComDown[kegg_id %in% ComUp$kegg_id])
+MumOver # if MumOver is empty, then it it fine
+MumAll <- rbind(MumUp,MumDown)
+MumAll[Empirical.Compound=='EC0001']
+## Add the extra column indicating the enriched compounds and the kegg index
+EnriUp <- data.table(read.csv('d:/github/MetGUI/output/2020Up_mummichog_pathway_enrichment.csv'))
+EnriDown <- data.table(read.csv('d:/github/MetGUI/output/2020Down_mummichog_pathway_enrichment.csv'))
+F_AddKeggName<-function(Enri, Mum){
+  Strsplit<-strsplit(Enri$EC.Hits,";",fixed=TRUE)
+  for (id in 1:length(Strsplit)) {
+    # id <- 1
+    ECSel <- Strsplit[[id]]
+    ListKegg <- list()
+    ListName <- list()
+    for (j in 1:length(ECSel)) {
+      # j <- 1
+      ListKegg[[j]] <- toString(unique(Mum[Empirical.Compound==ECSel[[j]]]$kegg_id))
+      ListName[[j]] <- toString(unique(Mum[Empirical.Compound==ECSel[[j]]]$name))
+    }
+    Enri[id,StrKegg:=paste(ListKegg, collapse = "; ")]
+    Enri[id,StrName:=paste(ListName, collapse = "; ")]
+  }
+  return(Enri)
+}
+EnriUpKegg <- F_AddKeggName(Enri = EnriUp,Mum=MumUp)
+EnriDownKegg <- F_AddKeggName(Enri = EnriDown,Mum=MumDown)
+EnriUpKegg[Pathway.Number=='P20']$StrName
+
+
+
+
 #### Create the consensus library spectra ####
 ## Link the library MoNA-export-LC-MS-MS_Spectra
 MoNAcon <- DBI::dbConnect(RSQLite::SQLite(), "d:/github/MetGUI/input/MoNA-export-LC-MS-MS_Spectra.sqlite")
@@ -1046,15 +1096,14 @@ View(SingleWhole_Pre_Top10_Uni_Check)
 
 #### Write results ####
 setwd(paste0(Path))
-EnriUp <- read.csv('d:/github/MetGUI/output/2020Up_mummichog_pathway_enrichment.csv')
-EnriDown <- read.csv('d:/github/MetGUI/output/2020Down_mummichog_pathway_enrichment.csv')
-MumUp <- read.csv('d:/github/MetGUI/output/2020Up_matched_compound_stat.csv')
-MumDown <- read.csv('d:/github/MetGUI/output/2020Down_matched_compound_stat.csv')
+
+
 
 MetGUIResults <- list("Volcano" = Volcano, "SingleWhole_Pre" = SingleWhole_Pre,
                       "SingleWhole_Pre_Top10" = SingleWhole_Pre_Top10,
                       "SingleWhole_Pre_Top10_Uni" = SingleWhole_Pre_Top10_Uni,
                       'EnriUp' = EnriUp, 'EnriDown' = EnriDown,
+                      'EnriUpKegg' = EnriUpKegg, 'EnriDownKegg' = EnriDownKegg,
                       'MumUp' = MumUp, 'MumDown' = MumDown) 
 write_xlsx(MetGUIResults, "MetGUIResults.xlsx")
 ## Check the results of 20 AAs, save the results as Check sheet in MetGUIResults0710.xlsx
