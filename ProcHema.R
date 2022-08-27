@@ -1,7 +1,7 @@
 # This code is to integrate the codes from both Positive and Negative mode from HILIC
 # Use Msconvert to transfer dataset from .raw into .mzML, spread the .mzML dataset into different groups
 #### ImportData using readMSData command from packagee MSnbase ####
-Path <- 'd:/github/MetGUI/output/'
+Path <- 'd:/github/MetGUI/'
 setwd(Path)
 ## Load the dataset for the pure AA
 # Raw_PureAA_Neg<-F_readMSData(Dir = "d:/VirtualMachineDisk/Hematology/HilicNegative/DDA/mzMLCentroid/AAStandard",
@@ -890,7 +890,7 @@ View(pa_ft_fil)
 pa_ft_fil_ave <- averageAllFragSpectra(pa_ft_fil) # treat the inter and intra fragmentation scans the same
 # View(pa_ft_fil_ave)
 
-q_dbPthValue <- createDatabase(pa_ft_fil_ave, onDisk, dbName = "q_dbPth0708.sqlite")
+# q_dbPthValue <- createDatabase(pa_ft_fil_ave, onDisk, dbName = "q_dbPth0708.sqlite")
 q_dbPthValue <- 'd:/github/MetGUI/output/q_dbPth0708.sqlite'
 qon <- DBI::dbConnect(RSQLite::SQLite(), q_dbPthValue)
 ## Extract from the query database the "c_peak_groups", which will be used for subset.
@@ -935,9 +935,8 @@ DBI::dbWriteTable(qon, name='s_peak_meta',value=s_peak_meta_rbind, overwrite = T
 DBI::dbDisconnect(qon)
 
 #### MS2 spectra matching based on the modified msPurity package ####
-## Library search
-
-setwd(paste0(Path,'LibrarySearch/0710'))
+## Library search without weighted intensity
+setwd(paste0(Path,'output/LibrarySearch/0710'))
 MRPValue <<- 7500
 # MRPValue <<- 17500
 RefMZValue <<- 400
@@ -951,6 +950,14 @@ for (id in unique(q_pidValue)) {
   spectralMatching(q_dbPth=q_dbPthValue, l_dbPth=l_dbPthValue0710,
                    l_ppmPrec = 20, q_pids= id, mztol = NA)
 }
+## Library search with weighted intensity
+# setwd(paste0(Path,'output/LibrarySearch/mz2int0.4')) # decoy also used the weighted intensity
+setwd(paste0(Path,'output/LibrarySearch/mz2int0.4_0827')) # decoy do not use the weighted intensity
+for (id in unique(q_pidValue)) {
+  # id <- 339
+  spectralMatching(q_dbPth=q_dbPthValue, l_dbPth=l_dbPthValue0710,
+                   l_ppmPrec = 20, q_pids= id,  mztol = NA,raW = 0.4,mzW = 2)
+}
 ## For testing purpose using the 20 AAs
 # q_pidAA <-c(51120,7696,44036,9621,30286,51162,51163,51170,51173,51182,10757,13381,1226,5031,931,2196,51208,955)
 # for (id in unique(q_pidAA)) {
@@ -961,11 +968,17 @@ for (id in unique(q_pidValue)) {
 
 
 ## Merge the files together, count candidates
-Dir <- paste0(Path, "LibrarySearch/0710")
+
+Dir <- paste0(Path, "output/LibrarySearch/0710")
 setwd(Dir)
 MergedDT <- F_MergeLibrarySearch(Dir= paste0(Dir))
-setwd(Path)
+
+Dir2.4 <- paste0(Path, "output/LibrarySearch/mz2int0.4_0827")
+setwd(Dir2.4)
+MergedDT2.4 <- F_MergeLibrarySearch(Dir= paste0(Dir2.4))
+
 ## Add meta and stat
+setwd(Path)
 F_AddMetaStat <- function(DT,Meta,Vol){
   ## Add meta data
   setnames(Meta,c('pid','grp_name'),c('query_qpid','Sample'),skip_absent = TRUE)
@@ -976,7 +989,9 @@ F_AddMetaStat <- function(DT,Meta,Vol){
   return(DT)
 }
 SingleWhole <- F_AddMetaStat(DT=MergedDT,Meta=s_peak_meta_rbind_PeakGroups,Vol=Volcano)
-
+SingleWhole2.4 <- F_AddMetaStat(DT=MergedDT2.4,Meta=s_peak_meta_rbind_PeakGroups,Vol=Volcano)
+write.csv(SingleWhole,'SingleWhole.csv')
+write.csv(SingleWhole2.4,'SingleWhole2.4.csv')
 ## Check the identification using the 20 AAs
 MH20AA<-data.table(read_excel(paste0(Path,"Reference/AAMass.xlsx"),sheet="M+H")) 
 F_CheckMH20AA <- function(DT, MH20AA){
@@ -994,9 +1009,10 @@ F_CheckMH20AA <- function(DT, MH20AA){
   return(DTRep_MH20AA)
 }
 SingleWhole[abs(library_precursor_mz - 106.0499 )<0.02]
+SingleWhole2.4[abs(library_precursor_mz - 106.0499 )<0.02]
 SingleWhole_Check <- F_CheckMH20AA(DT=SingleWhole,MH20AA)
 View(SingleWhole_Check)
-
+SingleWhole[Sample=='FT0054']
 # write.csv(SingleWhole_Check, 'SingleWhole_Check.csv',row.names = F)
 PeakGroups[grpid==54] # Check the reason for the missing 20 AAs
 s_peaks[pid==24620]
@@ -1017,7 +1033,11 @@ F_PrecursorFilt <- function(DT, MatchCutoff=1){
   return(DT)
 }
 SingleWhole_Pre <- F_PrecursorFilt(DT=SingleWhole,MatchCutoff = 2)
+SingleWhole_Pre2.4 <- F_PrecursorFilt(DT=SingleWhole2.4,MatchCutoff = 2)
 nrow(SingleWhole_Pre) # 1772    candidates
+nrow(SingleWhole_Pre2.4)
+
+SingleWhole_Pre[Sample=='FT0054']
 # unique(SingleWhole$query_qpid)
 # s_peak_meta_rbind_PeakGroups[!is.na(grpid)]
 # write.csv(SingleWhole_Pre, 'SingleWhole_Pre.csv',row.names = F)
@@ -1025,19 +1045,23 @@ SingleWhole_Pre_Check <- F_CheckMH20AA(DT=SingleWhole_Pre,MH20AA) ## Check wheth
 View(SingleWhole_Pre_Check)
 write.csv(SingleWhole_Pre_Check,'SingleWhole_Pre_Check.csv')
 #### FDR and q-value estimation ####
-F_FDRCutoff <- function(DT, MatchCutoff=2,FDRCutoff=0.05, XcorrCutoff=0,TopCutoff ,FileName){
+F_FDRCutoff <- function(DT, MatchCutoff=2,TopCutoff=10, NumCutoff=1000){
+  FDRCutoff <- 0.05
   print(paste('Before match cutoff filtration',MatchCutoff,nrow(DT)))
   DT <- DT[Match>=MatchCutoff]
   print(paste('After match cutoff filtration',MatchCutoff,nrow(DT)))
-  print('Select Top for each query based on fixed  cutoff')
+  setorder(DT,-dpc.xcorr) # decreasing of the score according to dpc
+  NumCutoffMin <- min(nrow(DT),NumCutoff)
+  DT <- DT[1:NumCutoffMin]
+  print(paste('After NumCutoff filtration',NumCutoff,nrow(DT)))
+  print('Select Top for each query based on TopCutoff')
   TarDynamic <- setorder(DT[mztol=='NA'], -dpc) %>% .[, head(.SD, TopCutoff), by='query_qpid'] %>% 
     .[, Database:='Target'] %>% setnames(.,'dpc','Thres')
   DecDynamic <- setorder(DT[mztol=='NA'], -dpc.decoy) %>% .[, head(.SD, TopCutoff), by='query_qpid'] %>% 
     .[, Database:='Decoy'] %>%  setnames(.,'dpc.decoy','Thres')
   print(paste('TopCutoff',TopCutoff,'Before',nrow(DT),'After',nrow(TarDynamic)))
   Dynamic <- rbind(TarDynamic, DecDynamic,fill=TRUE)
-  setorder(Dynamic,-Thres) # decreasing of the score according to dpc
-  DynamicDis <- Dynamic[dpc.xcorr>XcorrCutoff]
+  DynamicDis <- Dynamic
   print('Calculate the estimated qValue based on Pep accumulation')
   # Lambda<-getPEPFromScoreLambda(DynamicDis[Database=='Target']$Thres, DynamicDis[Database=='Decoy']$Thres,
   #                               paste0('FDR cutoff prediction DynamicCurve'))
@@ -1066,22 +1090,33 @@ F_FDRCutoff <- function(DT, MatchCutoff=2,FDRCutoff=0.05, XcorrCutoff=0,TopCutof
   # FDR_Thres <- round(min(Dynamic[qValue_DecoyTarget <= FDRCutoff]$Thres), digits = 2)
   print(paste("Pep_Thres", Pep_Thres))
   # Score.dpc<-rbind(data.table('Score'=Dynamic[,dpc],'Legend'='Target'),data.table('Score'=Dynamic[,dpc.decoy.Dec],'Legend'='Decoy'))
-  svg(paste('DensityTargetDecoyFDR',FDRCutoff,'ThresCutoff',XcorrCutoff,FileName,'.svg')) # ,width = 500, height = 500
   g_density <- ggplot(DynamicDis)  + 
-    ylab('Count') + xlab('Score') + theme_classic() + theme(legend.position="top") +
+    ylab('Count') + xlab('Score') + theme_classic() + theme(legend.position="top") + ylim(0,3000)+
     geom_density(aes(x = Thres, y = after_stat(count),colour = Database), adjust = 2) +
     # geom_vline(xintercept = FDR_Thres, linetype="dotted",color = "orange", size=1.5)+
     # annotate(geom = "label", x = FDR_Thres, y = 1000, label = FDR_Thres,color = "orange")+
     geom_vline(xintercept = Pep_Thres, linetype="dotted",color = "red", size=1.5)+
-    # annotate(geom = "label", x = Pep_Thres, y = 1000, label = Pep_Thres,color = "red")+
+    annotate(geom = "label", x = Pep_Thres, y = 1000, label = Pep_Thres,color = "red")+
     scale_colour_manual( name="Legend",values = c("Target" = "blue","Decoy" = "green"))
-  print(g_density)
-  dev.off()
-  return(Dynamic[Database=='Target'])
+  return(g_density)
 }
+F_FDRCutoffComp <- function(Normal, Weighted,FileName,MatchCutoff,TopCutoff,NumCutoff){
+  g_Normal <- F_FDRCutoff(DT = Normal, MatchCutoff,TopCutoff,NumCutoff)
+  g_Weighted <- F_FDRCutoff(DT = Weighted, MatchCutoff,TopCutoff,NumCutoff)
+  svg(paste(FileName,'MatchCutoff',MatchCutoff,'TopCutoff',TopCutoff,'NumCutoff',NumCutoff,'.svg')) # ,width = 500, height = 500
+  print(plot_grid(g_Normal, g_Weighted,align="h"))
+  dev.off()
+}
+# SingleWhole_PreUni <- unique(SingleWhole_Pre,by=c('query_qpid','library_lpid'))
+# SingleWhole_Pre2.4Uni <- unique(SingleWhole_Pre2.4,by=c('query_qpid','library_lpid'))
+F_FDRCutoffComp(Normal = SingleWhole_Pre,Weighted = SingleWhole_Pre2.4, 
+                FileName = 'CompareSingleWhole_Pre',
+                MatchCutoff = 2,TopCutoff = 10, NumCutoff = 1000)
+
+
 
 SingleWhole_Pre_Top10 <- F_FDRCutoff(DT = SingleWhole_Pre, FileName='SingleWhole_Pre_Top10',
-                                           MatchCutoff = 2,TopCutoff = 10, XcorrCutoff = 0.1)
+                                     MatchCutoff = 2,TopCutoff = 10, XcorrCutoff = 0.1)
 nrow(SingleWhole_Pre_Top10[qValue_Pep<=0.05]) #453 candidates
 SingleWhole_Pre_Top10_Check <- F_CheckMH20AA(DT=SingleWhole_Pre_Top10,MH20AA) ## Check whether or not the 20 AAs are identified
 View(SingleWhole_Pre_Top10_Check) # only Gly and Cys are not identified
@@ -1096,9 +1131,6 @@ View(SingleWhole_Pre_Top10_Uni_Check)
 
 #### Write results ####
 setwd(paste0(Path))
-
-
-
 MetGUIResults <- list("Volcano" = Volcano, "SingleWhole_Pre" = SingleWhole_Pre,
                       "SingleWhole_Pre_Top10" = SingleWhole_Pre_Top10,
                       "SingleWhole_Pre_Top10_Uni" = SingleWhole_Pre_Top10_Uni,
@@ -1123,7 +1155,8 @@ F_SpectrumSingle <- function(x) {
   # library_lpid <- 27440
   # inchikey_14 <- gsub(inchikey_14, pattern = "\\[",replacement = "_",perl = TRUE)
   # inchikey_14 <- 'inchikey_14'
-  # query_qpid <- 59602
+  # query_qpid <- 16135 # for Glycine
+  # library_lpid <- 43890 # for Glycine
   SpecQ <-s_peaks[pid==query_qpid]
   SpecL <-library_spectra_Sensus[library_spectra_meta_id==library_lpid]
   if (length(SpecQ) < 1 | length(SpecQ) < 1) {
@@ -1163,7 +1196,43 @@ for (id in (1:nrow(ForMirror))) {
   print(id)
   F_SpectrumSingle(x = as.matrix(ForMirror[id]))
 }
-
+## Plot the missing Glycine and cystine
+GlyCys <- SingleWhole[Sample %in% c('FT0054','FT0337') ]
+setnames(GlyCys,'dpc','Thres')
+GlyCys$pep <- 'pep'
+GlyCys$qValue_Pep <- 'qValue_Pep'
+GlyCys$SumPep <- 'SumPep'
+GlyCys$Length <- 'Length'
+Colu <- c('Sample','query_precursor_mz','query_rt','Thres','query_qpid','library_lpid',
+          'library_entry_name','library_inchikey','library_precursor_type',
+          'FC','log2.FC.','raw.pval','p.ajusted','npeaks',
+          'dpc.decoy', 'pep','qValue_Pep',
+          'mz','mzmin','mzmax','rt','rtmin','rtmax',
+          'SumPep','Length')
+setcolorder(GlyCys, c(Colu,colnames(GlyCys)[!(colnames(GlyCys) %in% Colu)]))
+names(GlyCys)
+GlyCys[Sample=='FT0054']
+F_PlotMirMissing <- function(query_qpid,library_lpid,Name){
+  SpecQ <-s_peaks[pid==query_qpid]
+  SpecL <-library_spectra_Sensus[library_spectra_meta_id==library_lpid]
+  spec.top <- data.table("mz" = SpecQ$mz, "intensity" = SpecQ$i)
+  spec.bottom <- data.table("mz" = SpecL$mz, "intensity" = SpecL$i)
+  ## Target
+  top_tmp <- data.frame(mz = spec.top[, 1], intensity = spec.top[, 2])
+  top_tmp$normalized <- (top_tmp$intensity / max(top_tmp$intensity)) * 100
+  top_plot <- data.frame(mz = top_tmp$mz, intensity = top_tmp$normalized) # data frame for plotting spectrum
+  
+  bottom_tmp <- data.frame(mz = spec.bottom[, 1], intensity = spec.bottom[, 2])
+  bottom_tmp$normalized <- (bottom_tmp$intensity / max(bottom_tmp$intensity)) * 100
+  bottom_plot <- data.frame(mz = bottom_tmp$mz, intensity = bottom_tmp$normalized) # data frame for plotting spectrum
+  AlignDynamic <- F_DynamicMatching(top = top_plot, bottom = bottom_plot,RefMZ = 400,MRP=7500)
+  ## Plot
+  png(paste('PlotMirMissing', Name,".png"), width = 1000, height = 1100, res = 150)
+  F_PlotMSMS(alignment = AlignDynamic, top_plot = top_plot, bottom_plot = bottom_plot)
+  title(paste0('Name = ',Name), outer = F)
+  dev.off()  
+}
+F_PlotMirMissing(query_qpid=1676,library_lpid=21178,Name='Cysteine')
 
 #### EIC visualization for the 20 AAs ####
 ## Extract the features that are related to 20 AAs
@@ -1317,8 +1386,147 @@ F_VolcanoPlot<-function(DT,Name,FC=0.6,P=0.05,NSAA='pink',SigAA='red2',NSMet='li
 
 F_VolcanoPlot(DT=Merge,"Volcano plot",FC=0.6,P=0.05)
 
+#### Prepare dataset for MS2 distribution and scaling factor ####
+## Prepare PNNL dataset
+PNNL_Pos <- readMgfData(paste0(Path,"/input/Mgf/PNNL-LIPIDS-POSITIVE.mgf")) # ImportData using readMgfData command from package MSnbase
+PNNL_Neg <- readMgfData(paste0(Path,"/input/Mgf/PNNL-LIPIDS-NEGATIVE.mgf"))
+nrow(fData(PNNL_Pos)) #30582 ## Data Information
+nrow(fData(PNNL_Neg)) #16142
+write.csv(fData(PNNL_Pos), "fData(PNNL_Pos).csv")
+write.csv(fData(PNNL_Neg), "fData(PNNL_Neg).csv")
+Fdata_Pos <- data.table(read.csv("fData(PNNL_Pos).csv"))
+Fdata_Neg <- data.table(read.csv("fData(PNNL_Neg).csv"))
+Fdata_Pos[(SOURCE_INSTRUMENT == "LC-ESI-CID; Lumos"), ] #538 # LC-ESI-CID; Lumos LC-ESI-HCD; Lumos LC-ESI-CID; Velos LC-ESI-HCD; Velos
+Fdata_Pos[(SOURCE_INSTRUMENT == "LC-ESI-HCD; Lumos"), ] #537
+Fdata_Pos[(SOURCE_INSTRUMENT == "LC-ESI-CID; Velos"), ] #14754
+Fdata_Pos[(SOURCE_INSTRUMENT == "LC-ESI-HCD; Velos"), ] #14753
+CIDPos <- Fdata_Pos[(SOURCE_INSTRUMENT == "LC-ESI-CID; Velos"), ]
+HCDPos <- Fdata_Pos[(SOURCE_INSTRUMENT == "LC-ESI-HCD; Velos"), ]
+CIDNeg <- Fdata_Neg[(SOURCE_INSTRUMENT == "LC-ESI-CID; Velos"), ] #7784
+HCDNeg <- Fdata_Neg[(SOURCE_INSTRUMENT == "LC-ESI-HCD; Velos"), ] #7783
+F_SpectraToMS2 <- function(Fdata, Name, PNNL) {
+  # OptWeiCIDPos <- F_MSMSDistribution(Fdata=CIDPos, Name='CID Pos', PNNL=PNNL_Pos, binwidth = 10)
+  ## Extract Spectra
+  GNPSSpectra <<- spectra(PNNL)
+  Name <<- Name
+  # Cutoff <<- Cutoff
+  results <- data.frame()
+  results <- apply(Fdata[, 1], 1, F_ExtractGNPSMS2)
+  results <- ldply (results, data.frame) #Transfer results from list to data.frame
+  DT <- data.table(results) %>% setnames(., c('V1', 'V2'), c('mz', 'intensity'))
+  ## Add the compounds names for unique purpose
+  IndexName <- Fdata[, c('X', 'NAME')] %>% setnames(., 'X', 'Index')
+  DT <- left_join(DT, IndexName, by = 'Index') %>% data.table(.)
+  return(DT)
+}
+RawMS2CIDPos <- F_SpectraToMS2(Fdata=CIDPos, Name='CID Pos', PNNL=PNNL_Pos)
+RawMS2HCDPos <- F_SpectraToMS2(HCDPos, 'HCD Pos', PNNL_Pos)
+RawMS2CIDNeg <- F_SpectraToMS2(CIDNeg, 'CID Neg', PNNL_Neg)
+RawMS2HCDNeg <- F_SpectraToMS2(HCDNeg, 'HCD Neg', PNNL_Neg)
+## Prepare the Hematology dataset
+register(SerialParam()) #disable paralell
+dda_2020 <- xcms::featureSpectra(xdata_MixAA_Pos,return.type = "Spectra")
+ex_spectra <- combineSpectra(dda_2020,  ppm = 40, peaks = "union", 
+                             intensityFun = median, mzFun = median,f = dda_2020$feature_id)
+ex_spectra <- setBackend(ex_spectra, MsBackendDataFrame())
+dda_2020_meta <- spectraData(ex_spectra,spectraVariables(ex_spectra)) %>% as.data.table(.)
+dda_2020_meta <- unique(dda_2020_meta,by='feature_id')
+F_ExtractMS2 <- function(x) { 
+  # print('Extract MS2 according to NeutralPrecursorMass')
+  ## Extract all MS2 spectra that were associated with the candidate using the ID of Feature (rownames)
+  # x[1] <- 'FT0020'
+  ex_spectrum<- ex_spectra[ex_spectra$feature_id == x[1]]
+  # View(ex_spectrum@backend@spectraData@listData)
+  # print('From the only one spectra, extract the mz and intensity for MS2')
+  Length <- length(ex_spectrum@backend@spectraData@listData[["mz"]]@listData)
+  PeakList_matrix <- matrix(c(0, 0), ncol = 2, byrow = FALSE)
+  if (Length > 0) {
+    for (id in c(1:Length)) {
+      PeakList <- matrix(c(ex_spectrum@backend@spectraData@listData[["mz"]]@listData[[id]]
+                           , ex_spectrum@backend@spectraData@listData[["intensity"]]@listData[[id]]), 
+                         ncol = 2, byrow = FALSE)
+      PeakList_matrix <- rbind(PeakList_matrix, PeakList)
+    }  
+  }
+  DT <- data.table(PeakList_matrix)
+  DT[, Index := x[1]]
+  # print(PeakList_matrix)
+  return(DT)
+}
+results <- apply(dda_2020_meta[,'feature_id'], 1, F_ExtractMS2)
+results <- ldply (results, data.frame) #Transfer results from list to data.frame
+RawMS2Hema <- data.table(results) %>% setnames(., c('V1', 'V2'), c('mz', 'intensity'))
+RawMS2Hema[,NAME:=Index]
+RawMS2Hema <- RawMS2Hema[intensity>0]
 
+#### MS2 distribution and Scaling factor ####
+wmzVector <<- c(0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1, 1.3, 2, 3, 4, 5,10) 
+# Original wmz = c(0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1,1.3,2,3,4,5,10)
+# mz used before 0, 0.9,1, 1.3, 2, 3
+wintVector <<- c(.01, .05, .1, .2,.33, .3, .4, .5, .53, .6, .7, .8, .9, 1, 1.2, 2, 3, 5,10) 
+# Original wint = c(.01,.05,.1,.2,.3,.4,.5,.53,.6,.7,.8,.9,1,2,3,5,10)
+# intensity used before 0.33, 0.5, 0.53, 0.6, 1, 1.2
 
+F_ScalingFactor <- function(Name, DT,statsValue,RfoldValue) {
+  DT[, mzRound := round(mz)]
+  setorder(DT, -intensity) # sort intensity from big to small
+  MS2 <- unique(DT, by = c('NAME', 'mzRound')) # for the same compound, only keep one scan at the same mzRound
+  ## Boxplot visualization and use extreme of the lower whisker as cutoff
+  Cutoff <<- boxplot.stats(MS2$intensity)$stats[statsValue] %>% round(.,digits = 1)
+  MS2 <- MS2[intensity >= Cutoff]
+  ## Plot MSMS distribution
+  svg(file = paste(Name,'Cutoff', Cutoff,"Number MS2", nrow(MS2), 'MZ Distribution.svg'))
+  print(ggplot(MS2, aes(mz)) + geom_histogram(colour = "black", binwidth = 10) +
+          labs(title = Name) + theme_classic())#+xlim(0,xlimrange)
+  dev.off()
+  ## Plot Intensity distribution
+  svg(file = paste(Name,'Cutoff', Cutoff,"Number MS2", nrow(MS2), 'Intensity Distribution.svg'))
+  print(ggplot(MS2, aes(log2(intensity))) + 
+          geom_histogram(colour = "black", binwidth = 1) +
+          labs(title = Name) + theme_classic() + xlim(0,30))
+  dev.off()
+  # Creat a matrix for scaling
+  setorder(MS2, NAME) # NAME from small to large
+  MS2NAME <- unique(MS2, by = 'NAME')  # unique
+  alignment = data.table("mzRound" = 1:round(max(MS2$mz))) # creat rows temple
+  for (id in seq(1, nrow(MS2NAME), 1)) {
+    # for each unique index, select the related mz and intensity
+    # id <-1
+    x <- as.character(MS2NAME[id, NAME])
+    # print(paste("Row",id,"NAME",x))
+    MS2Selected <- MS2[NAME == x]
+    setorder(MS2Selected, -intensity) # sort from big to small
+    Selected <- MS2Selected[, c('mzRound', 'intensity')]
+    Selected<-unique(Selected,by="mzRound") # for multiple entries with same mz, only select the one with max intensity
+    setnames(Selected, "intensity", x) # change the column into index
+    alignment <- merge(alignment, Selected, by = "mzRound", all.x = TRUE)
+  }
+  alignment <- alignment[, -"mzRound"] # remove the column mz
+  alignment[is.na(alignment)] <- 0 #replace missing value with 0
+  write.csv(alignment, paste(Name, "Cutoff", Cutoff, "Number MS2", nrow(MS2), "Matrix.csv"))
+  Name <<- Name
+  # OptimizedWeight<-opt.weight(rdata = as.data.frame(alignment),R = 10,fold = 10,plot = T,verbose = T)
+  OptimizedWeight <- opt.weight(rdata = as.data.frame(alignment), R = RfoldValue, fold = RfoldValue, plot = T, verbose = T)
+  return(OptimizedWeight)
+}
+OptHema <- F_ScalingFactor(Name = "MS2Hema", DT = RawMS2Hema,statsValue= 1, RfoldValue = 1)
+OptCIDPos <- F_ScalingFactor(Name = "MS2CIDPos",DT=RawMS2CIDPos,statsValue= 2,RfoldValue = 10)
+OptHCDPos <- F_ScalingFactor(Name = "MS2HCDPos",DT=RawMS2HCDPos,statsValue= 2,RfoldValue = 10)
+OptCIDNeg <- F_ScalingFactor(Name = "MS2CIDNeg",DT=RawMS2CIDNeg,statsValue= 2,RfoldValue = 10)
+OptHCDNeg <- F_ScalingFactor(Name = "MS2HCDNeg",DT=RawMS2HCDNeg,statsValue= 2,RfoldValue = 10)
+
+## for testing purpose
+# range(MS2CID$Norm)
+# max(MS2HCD$intensity)
+# MatrixCID<-read.csv('MatrixCID.csv')
+# MS2<-MS2[mz<1000]
+load("d:/github/Identification/Optimal_weight_factors/subWebNIST.rda")
+write.csv(webnist,'webnist.csv')
+# webnist.test <- read.csv('d:/github/Identification/webnist.test.csv')
+# wt.ran <- opt.weight(rdata = webnist.test,plot = T,R = 10,fold = 10,verbose = T)
+# MS2Neg<-F_MSMSDistribution(PNNL=PNNL_Neg,Fdata=Fdata_Neg[1:100],Cutoff=0.1,Name='Negative Density',binwidth=9,xlimrange=1000)
+# MatrixNeg<-F_MatrixForScaling(MS2=MS2Neg)
+# wt.ran.Neg<-F_opt.weight(MatrixNeg)
 
 
 #### No use Venn diagram between massbank, mzcloud and 142 priority ####

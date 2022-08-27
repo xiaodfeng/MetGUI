@@ -50,7 +50,7 @@ MetGUI <- function() {
   gp_ImportData <- ggroup(horizontal = FALSE, cont = nb, label = "Workflow")
   lo_ImportData <- glayout(cont = gp_ImportData, horizontal = F)
   ## Set Dataset frame in ImportData tab
-  lo_ImportData[1, 1] <- gf_Dataset <- gframe("Data transformation", horizontal = F, expand = TRUE)
+  lo_ImportData[1, 1] <- gf_Dataset <- gframe("1 Data transformation", horizontal = F, expand = TRUE)
   lo_Dataset <- glayout(cont = gf_Dataset, horizontal = F)
   lo_Dataset[1, 1] <- widgets$bt_folder <- gbutton("Select dataset folder", handler = function(h, ...) {
     widgets$my_path <- choose.dir(caption = "Select folder")
@@ -153,7 +153,7 @@ MetGUI <- function() {
   })
   #### PeakDetection ####
   ## set CentWave parameters on gp_CentWave
-  lo_ImportData[1, 2] <- gf_CentWave <- gframe("Peak detection", horizontal = F, expand = TRUE)
+  lo_ImportData[1, 2] <- gf_CentWave <- gframe("2 Peak detection", horizontal = F, expand = TRUE)
   lo_CentWave <- glayout(cont = gf_CentWave, horizontal = F)
   lo_CentWave[1, 1] <- glabel("Mass accuracy")
   lo_CentWave[1, 2] <- widgets$ed_ppm <- gedit(text = "1", width = 4)
@@ -237,7 +237,7 @@ MetGUI <- function() {
     print("Results exported successfully!")
   })
   #### Spectra pre-processing ####
-  lo_ImportData[1, 3] <- gf_Processing <- gframe("Spectrum pre-processing", horizontal = F, expand = TRUE)
+  lo_ImportData[1, 3] <- gf_Processing <- gframe("3 Spectrum pre-processing", horizontal = F, expand = TRUE)
   lo_Processing <- glayout(cont = gf_Processing, horizontal = F)
   ### Set Obiwarp RT alignment frame in Retention Time Alignment tab
   lo_Processing[1, 1] <- glabel("binSize") ### set binSize
@@ -267,15 +267,16 @@ MetGUI <- function() {
   #   print("Plot RT Alignment effect Done!")
   # })
   # tooltip(widgets$bt_TIC) <- "Plot the TIC before and after retention time alignment"
-  lo_Processing[3, 1] <- glabel(paste("rtMin (>", round(RangeRT[1]), " s)", sep = ""))
+  lo_Processing[3, 1] <- glabel(paste("rtMin (s)", sep = ""))
   lo_Processing[3, 2] <- widgets$rtMin <- gedit(text = "760", width = 6)
-  lo_Processing[4, 1] <- glabel(paste("rtMax (<", round(RangeRT[2]), " s)", sep = ""))
+  lo_Processing[4, 1] <- glabel(paste("rtMax (s)", sep = ""))
   lo_Processing[4, 2] <- widgets$rtMax <- gedit(text = "810", width = 6)
-  lo_Processing[5, 1] <- glabel(paste("mzMin (>", round(RangeMZ[1]), ")", sep = ""))
-  lo_Processing[5, 2] <- widgets$mzMin <- gedit(text = "175.1", width = 6)
-  lo_Processing[6, 1] <- glabel(paste("mzMax (<", round(RangeMZ[2]), ")", sep = ""))
-  lo_Processing[6, 2] <- widgets$mzMax <- gedit(text = "175.2", width = 6)
-  lo_Processing[7, 1:2] <- widgets$bt_ExtractedIonChromatogram <- gbutton("Plot alignment effect EIC", handler = function(h, ...) {
+  lo_Processing[5, 1] <- glabel(paste("mzMin (Da)", sep = ""))
+  lo_Processing[5, 2] <- widgets$mzMin <- gedit(text = "175.10", width = 6)
+  lo_Processing[6, 1] <- glabel(paste("mzMax (Da)", sep = ""))
+  lo_Processing[6, 2] <- widgets$mzMax <- gedit(text = "175.20", width = 6)
+  lo_Processing[7, 1:2] <- ed_PlotAligned <- gradio(c('TIC','BPC','EIC'), horizontal=TRUE, width = 4)
+  lo_Processing[8, 1:2] <- widgets$bt_ExtractedIonChromatogram <- gbutton("Plot raw and aligned EICs", handler = function(h, ...) {
     val$mzMin <<- as.numeric(svalue(widgets$mzMin))
     val$mzMax <<- as.numeric(svalue(widgets$mzMax))
     val$rtMin <<- as.numeric(svalue(widgets$rtMin))
@@ -307,7 +308,7 @@ MetGUI <- function() {
   lo_Processing[3, 3] <- glabel("minFraction")
   lo_Processing[3, 4] <- ed_minFraction <- gedit(text = "0.6", width = 8)
 
-  lo_Processing[4, 3:4] <- widgets$bt_DensityProcessing <- gbutton("Run grouping", handler = function(h, ...) {
+  lo_Processing[4, 3:4] <- widgets$bt_DensityProcessing <- gbutton("Peak grouping in dataset", handler = function(h, ...) {
     val$bw <<- as.numeric(as.character(Parameter[Parameters == "bw", Values]))
     if (val$bw == -1) {
       val$bw <<- as.numeric(svalue(ed_bw))
@@ -334,13 +335,13 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_DensityGrouping) <- "groupChromPeaks-density method performs correspondence (chromatographic peak grouping) based on the density (distribution) of identified peaks along the retention time axis within slices of overlapping mz ranges. All peaks (from the same or from different samples) being close on the retention time axis are grouped into a feature (peak group).bw: The maximum expected RT deviation across samples."
 
-  lo_Processing[5, 3:4] <- gbutton("Export grouping", handler = function(h, ...) {
+  lo_Processing[5, 3:4] <- gbutton("Export grouped peaks", handler = function(h, ...) {
     write.csv(xdata1@msFeatureData[["featureDefinitions"]], "Grouping_xdata1_msFeatureData_featureDefinitions.csv")
     # write.csv(xdata2@msFeatureData[["featureDefinitions"]],"Grouping_xdata2_msFeatureData_featureDefinitions.csv")
     print("Results exported successfully!")
   })
   ## Set GroupingEffect gframe in Grouping tab
-  lo_Processing[6, 3:4] <- widgets$bt_PlotGrouping <- gbutton("Plot grouping effect", handler = function(h, ...) {
+  lo_Processing[6, 3:4] <- widgets$bt_PlotGrouping <- gbutton("Plot peak grouping", handler = function(h, ...) {
     # F_Delete_Ggraphics()
     svg(paste0('Grouping effect','.svg'))
     plotChromPeakDensity(xdata1,
@@ -362,7 +363,7 @@ MetGUI <- function() {
 
 
   #### Annotation ####
-  lo_ImportData[2, 1] <- gf_Isotope <- gframe("Annotation", horizontal = F, expand = TRUE)
+  lo_ImportData[2, 1] <- gf_Isotope <- gframe("4 Annotation", horizontal = F, expand = TRUE)
   lo_Isotope <- glayout(cont = gf_Isotope, horizontal = F)
   ## Set IsotopeFilteration gframe in Fill missing peaks tab
   # lo_Isotope[1, 1] <- glabel("ppm Isotope")
@@ -439,7 +440,7 @@ MetGUI <- function() {
   ## Set Scatter Plot gframe in Fill missing peaks tab
   lo_Isotope[7, 1] <- glabel("Log")
   lo_Isotope[7, 2] <- cb_log <- gcombobox(c("2", "10"), expand = T)
-  lo_Isotope[8, 1:2] <- widgets$bt_Scatter <- gbutton("Plot scatter plot", handler = function(h, ...) {
+  lo_Isotope[8, 1:2] <- widgets$bt_Scatter <- gbutton("Plot annotation", handler = function(h, ...) {
     ### figure
     if (as.numeric(svalue(cb_log)) == 2) {
       g <- ggplot(Feature, aes(mz, rt)) +
@@ -460,12 +461,10 @@ MetGUI <- function() {
   tooltip(widgets$bt_Scatter) <- "Scatter Plot of detected features, the colour indicates the intensiy of the features"
 
   #### Metabolite identification####
-  lo_ImportData[2, 2] <- gf_Identification <- gframe("Metabolite identification", horizontal = F, expand = TRUE)
+  lo_ImportData[2, 2] <- gf_Identification <- gframe("5 Metabolite identification", horizontal = F, expand = TRUE)
   lo_Identification <- glayout(cont = gf_Identification, horizontal = F)
   ## Set Preprocessing gframe in Identification tab
-  lo_Identification[1, 1] <- glabel("FDR")
-  lo_Identification[1, 2] <- ed_FDR <- gedit(text = "0.05", width = 4)
-  lo_Identification[2, 1:2] <- gbutton("Create query database", handler = function(h, ...) {
+  lo_Identification[1, 1:2] <- gbutton("Create query library", handler = function(h, ...) {
     print("Link MS1 with MS2 is working...")
     cdfs <<- dir("d:/github/MetGUI/input/NormalVSHYP", full.names = TRUE,recursive = TRUE)
     pa <<- purityA(cdfs)
@@ -490,7 +489,7 @@ MetGUI <- function() {
     # q_xcmsGroupsValue <- c_peak_groups$grpid # 455 # use this index for mass query
     print("Create query database done!")
   })
-  lo_Identification[3, 1:2] <- gbutton("Create library database", handler = function(h, ...) {
+  lo_Identification[2, 1:2] <- gbutton("Create consensus library", handler = function(h, ...) {
     print("Create library database is working...")
     l_dbPthValue <<- "d:/github/MetGUI/input/MoNA-export-LC-MS-MS_Spectra.sqlite"
     con <- DBI::dbConnect(RSQLite::SQLite(), l_dbPthValue)
@@ -498,9 +497,10 @@ MetGUI <- function() {
   })
   
   ## Set HomeBuilt gframe in Identification tab
-  lo_Identification[4, 1] <- glabel("MRP MS2")
-  lo_Identification[4, 2] <- ed_MRPMS2 <- gedit(text = "7500", width = 4)
-  lo_Identification[5, 1:2] <- widgets$bt_HomeBuilt <- gbutton("Run experimental", handler = function(h, ...) {
+  lo_Identification[3, 1] <- glabel("MRP MS2")
+  lo_Identification[3, 2] <- ed_MRPMS2 <- gedit(text = "7500", width = 4)
+  lo_Identification[4, 1:2] <- ed_MS2 <- gradio(c('Exp. MS2','In-silico MS2'), horizontal=TRUE, width = 4)
+  lo_Identification[5, 1:2] <- widgets$bt_HomeBuilt <- gbutton("Run identification", handler = function(h, ...) {
     print("Experimental Identification is working...")
     result <- spectralMatching(
       q_dbPth = q_dbPthValue, l_dbPth = l_dbPthValue
@@ -520,87 +520,97 @@ MetGUI <- function() {
   # lo_Identification[8, 2] <- ed_FragmentPeakMatchAbsoluteMassDeviation <- gedit(text = "0.005", width = 6)
   # lo_Identification[9, 1] <- glabel("FragmentPeakMatchRelativeMassDeviationv(PPM):")
   # lo_Identification[9, 2] <- ed_FragmentPeakMatchRelativeMassDeviation <- gedit(text = "8", width = 6)
-  lo_Identification[6, 1:2] <- widgets$bt_Metfrag <- gbutton("Run metfrag", handler = function(h, ...) {
-    F_Identification <- function(x) { # first define the identification function
-      candidates_null <- data.frame(Null = "+")
-      NeutralPrecursorMass <- as.numeric(x[18]) #
-      PrecuresorMZ <- as.numeric(x[1])
-      RT <- as.numeric(x[4])
-      rtmin <- as.numeric(x[5])
-      rtmax <- as.numeric(x[6])
-      # print(RT)
-      settingsObject[["MetFragDatabaseType"]] <- c("LocalCSV") # can try ExtendedPubChem next time
-      settingsObject[["LocalDatabasePath"]] <- c("inst/extdata/Database/lipidmaps2017Short.csv") #
-      settingsObject[["NeutralPrecursorMass"]] <- NeutralPrecursorMass # neutral monoisotopic precursor mass
-      # peak<-subset(MS3$MS2,(rt-RT)<60&(rt-RT)>-60)
-      peak <- subset(MS3$MS2, ((rt < (rtmax + 5)) & (rt > (rtmin - 5)) & (precursorMz > (PrecuresorMZ - 0.01)) & (precursorMz < (PrecuresorMZ + 0.01))))
-      peak_mz_intensity <- peak[, c(2, 6)]
-      peak_mz_intensity <- as.matrix(peak_mz_intensity, ncol = 2, byrow = TRUE)
-      settingsObject[["PeakList"]] <- peak_mz_intensity # get the peak list from MS2
-      candidates <- data.frame()
-      scored.candidates <- data.frame()
-      candidates <- run.metfrag(settingsObject)
-      if (is.null(candidates$Score)) {
-        scored.candidates <- candidates_null
-      } # fill candidates with null created
-      else {
-        scored.candidates <- candidates # add the identified candidates to scored.candidates
-        # add extra information to the identifications
-        scored.candidates$RentionTime <- RT
-        scored.candidates$rtmin <- rtmin
-        scored.candidates$rtmax <- rtmax
-        scored.candidates$NeutralPrecursorMass <- NeutralPrecursorMass
-        scored.candidates$PrecuresorMZ <- PrecuresorMZ
-        scored.candidates$mzmin <- x[2]
-        scored.candidates$mzmax <- x[3]
-        scored.candidates$npeaks <- x[7]
-        scored.candidates$Intensity1 <- x[10]
-        scored.candidates$Intensity2 <- x[11]
-        scored.candidates$IntensityMean <- x[15]
-        scored.candidates$isotops <- x[12] #
-        scored.candidates$adduct <- x[17]
-      }
-      return(scored.candidates)
-    }
-    settingsObject <- list()
-    
-    val$DatabaseSearchRelativeMassDeviation <<- as.character(Parameter[Parameters == "DatabaseSearchRelativeMassDeviation", Values])
-    if (val$DatabaseSearchRelativeMassDeviation == -1) {
-      val$DatabaseSearchRelativeMassDeviation <<- 10
-    }
-    
-    val$FragmentPeakMatchAbsoluteMassDeviation <<- as.character(Parameter[Parameters == "FragmentPeakMatchAbsoluteMassDeviation", Values])
-    if (val$FragmentPeakMatchAbsoluteMassDeviation == -1) {
-      val$FragmentPeakMatchAbsoluteMassDeviation <<- 0.005
-    }
-    
-    val$FragmentPeakMatchRelativeMassDeviation <<- as.character(Parameter[Parameters == "FragmentPeakMatchRelativeMassDeviation", Values])
-    if (val$FragmentPeakMatchRelativeMassDeviation == -1) {
-      val$FragmentPeakMatchRelativeMassDeviation <<- 10
-    }
-    
-    
-    settingsObject[["DatabaseSearchRelativeMassDeviation"]] <- as.numeric(val$DatabaseSearchRelativeMassDeviation)
-    settingsObject[["FragmentPeakMatchAbsoluteMassDeviation"]] <- as.numeric(val$FragmentPeakMatchAbsoluteMassDeviation)
-    settingsObject[["FragmentPeakMatchRelativeMassDeviation"]] <- as.numeric(val$FragmentPeakMatchRelativeMassDeviation)
-    results <- data.frame()
-    results <- apply((MS3$MS1), 1, F_Identification)
-    results_dt <- ldply(results, data.frame) # Transfer results from list to data.frame
-    identifications_lipidmaps <- data.table(results_dt) #
-    identifications_lipidmaps <<- unique(identifications_lipidmaps, by = c("PrecuresorMZ", "RentionTime", "NeutralPrecursorMass", "adduct"))
-    identifications_lipidmaps <<- identifications_lipidmaps[!"+", on = .(Null)] # filterout the null candadates
-    # identifications_lipidmaps$RentionTime<-identifications_lipidmaps$RentionTime/60
-    setorder(identifications_lipidmaps, -RentionTime, -Score) #
-    print("MetFrag Identification Done!")
+  # lo_Identification[5, 1:2] <- widgets$bt_Metfrag <- gbutton("Run metfrag", handler = function(h, ...) {
+  #   F_Identification <- function(x) { # first define the identification function
+  #     candidates_null <- data.frame(Null = "+")
+  #     NeutralPrecursorMass <- as.numeric(x[18]) #
+  #     PrecuresorMZ <- as.numeric(x[1])
+  #     RT <- as.numeric(x[4])
+  #     rtmin <- as.numeric(x[5])
+  #     rtmax <- as.numeric(x[6])
+  #     # print(RT)
+  #     settingsObject[["MetFragDatabaseType"]] <- c("LocalCSV") # can try ExtendedPubChem next time
+  #     settingsObject[["LocalDatabasePath"]] <- c("inst/extdata/Database/lipidmaps2017Short.csv") #
+  #     settingsObject[["NeutralPrecursorMass"]] <- NeutralPrecursorMass # neutral monoisotopic precursor mass
+  #     # peak<-subset(MS3$MS2,(rt-RT)<60&(rt-RT)>-60)
+  #     peak <- subset(MS3$MS2, ((rt < (rtmax + 5)) & (rt > (rtmin - 5)) & (precursorMz > (PrecuresorMZ - 0.01)) & (precursorMz < (PrecuresorMZ + 0.01))))
+  #     peak_mz_intensity <- peak[, c(2, 6)]
+  #     peak_mz_intensity <- as.matrix(peak_mz_intensity, ncol = 2, byrow = TRUE)
+  #     settingsObject[["PeakList"]] <- peak_mz_intensity # get the peak list from MS2
+  #     candidates <- data.frame()
+  #     scored.candidates <- data.frame()
+  #     candidates <- run.metfrag(settingsObject)
+  #     if (is.null(candidates$Score)) {
+  #       scored.candidates <- candidates_null
+  #     } # fill candidates with null created
+  #     else {
+  #       scored.candidates <- candidates # add the identified candidates to scored.candidates
+  #       # add extra information to the identifications
+  #       scored.candidates$RentionTime <- RT
+  #       scored.candidates$rtmin <- rtmin
+  #       scored.candidates$rtmax <- rtmax
+  #       scored.candidates$NeutralPrecursorMass <- NeutralPrecursorMass
+  #       scored.candidates$PrecuresorMZ <- PrecuresorMZ
+  #       scored.candidates$mzmin <- x[2]
+  #       scored.candidates$mzmax <- x[3]
+  #       scored.candidates$npeaks <- x[7]
+  #       scored.candidates$Intensity1 <- x[10]
+  #       scored.candidates$Intensity2 <- x[11]
+  #       scored.candidates$IntensityMean <- x[15]
+  #       scored.candidates$isotops <- x[12] #
+  #       scored.candidates$adduct <- x[17]
+  #     }
+  #     return(scored.candidates)
+  #   }
+  #   settingsObject <- list()
+  #   
+  #   val$DatabaseSearchRelativeMassDeviation <<- as.character(Parameter[Parameters == "DatabaseSearchRelativeMassDeviation", Values])
+  #   if (val$DatabaseSearchRelativeMassDeviation == -1) {
+  #     val$DatabaseSearchRelativeMassDeviation <<- 10
+  #   }
+  #   
+  #   val$FragmentPeakMatchAbsoluteMassDeviation <<- as.character(Parameter[Parameters == "FragmentPeakMatchAbsoluteMassDeviation", Values])
+  #   if (val$FragmentPeakMatchAbsoluteMassDeviation == -1) {
+  #     val$FragmentPeakMatchAbsoluteMassDeviation <<- 0.005
+  #   }
+  #   
+  #   val$FragmentPeakMatchRelativeMassDeviation <<- as.character(Parameter[Parameters == "FragmentPeakMatchRelativeMassDeviation", Values])
+  #   if (val$FragmentPeakMatchRelativeMassDeviation == -1) {
+  #     val$FragmentPeakMatchRelativeMassDeviation <<- 10
+  #   }
+  #   
+  #   
+  #   settingsObject[["DatabaseSearchRelativeMassDeviation"]] <- as.numeric(val$DatabaseSearchRelativeMassDeviation)
+  #   settingsObject[["FragmentPeakMatchAbsoluteMassDeviation"]] <- as.numeric(val$FragmentPeakMatchAbsoluteMassDeviation)
+  #   settingsObject[["FragmentPeakMatchRelativeMassDeviation"]] <- as.numeric(val$FragmentPeakMatchRelativeMassDeviation)
+  #   results <- data.frame()
+  #   results <- apply((MS3$MS1), 1, F_Identification)
+  #   results_dt <- ldply(results, data.frame) # Transfer results from list to data.frame
+  #   identifications_lipidmaps <- data.table(results_dt) #
+  #   identifications_lipidmaps <<- unique(identifications_lipidmaps, by = c("PrecuresorMZ", "RentionTime", "NeutralPrecursorMass", "adduct"))
+  #   identifications_lipidmaps <<- identifications_lipidmaps[!"+", on = .(Null)] # filterout the null candadates
+  #   # identifications_lipidmaps$RentionTime<-identifications_lipidmaps$RentionTime/60
+  #   setorder(identifications_lipidmaps, -RentionTime, -Score) #
+  #   print("MetFrag Identification Done!")
+  # })
+  lo_Identification[6, 1] <- glabel("FDR")
+  lo_Identification[6, 2] <- ed_FDR <- gedit(text = "0.05", width = 4)
+  tooltip(ed_FDR) <- "The false discovery rate used for quality control, the value should be positive larger than 0.001 
+  and are usually set as 0.05 (5% FDR) or 0.01 (1% FDR)"
+  # lo_Identification[6, 1:2] <- ed_FDR <- gradio(c('0.1%','1%','5% FDR'), horizontal=TRUE, width = 4)
+  # outputRadio <- gradio(c("HTML", "LATEX", "TEXT"), horizontal=TRUE, container=reportDialogOutFrame)
+  lo_Identification[7, 1:2] <- gbutton("Visualize target decoy", handler = function(h, ...) {
+    print("Visualize target decoy Done!")
   })
-  lo_Identification[7, 1:2] <- gbutton("Export results", handler = function(h, ...) {
+  
+  lo_Identification[8, 1:2] <- gbutton("Export results", handler = function(h, ...) {
     write.csv(result,'Experimental Identification.csv')
     # write.csv(identifications_lipidmaps, "identifications_Metfrag.csv")
     print("Export results Done!")
   })
   ## Set Parameters for MS-Pathway method
   #### Statistics ####
-  lo_ImportData[2, 3] <- gf_Statistics <- gframe("Statistics", horizontal = F, expand = TRUE)
+  lo_ImportData[2, 3] <- gf_Statistics <- gframe("6 Statistics", horizontal = F, expand = TRUE)
   lo_Statistics <- glayout(cont = gf_Statistics, horizontal = F)
   ## Set Filteration gframe in FilterNormalization tab
   lo_Statistics[1, 1:2] <- widgets$bt_SanityCheck <- gbutton("Sanity check", handler = function(h, ...) {
@@ -666,7 +676,7 @@ MetGUI <- function() {
            data transformation and scaling are two different approaches to make features more comparable.This function performs row-wise normalization, transformation, and scaling of your metabolomic data.
            "
 
-  lo_Statistics[8, 1:2] <- widgets$bt_PlotNormalization <- gbutton("Plot normalization effect", handler = function(h, ...) {
+  lo_Statistics[8, 1:2] <- widgets$bt_PlotNormalization <- gbutton("Show normalization effect", handler = function(h, ...) {
     mSet <<- PlotNormSummary(mSet, "norm_0_", "png", 72, width = NA)
     mSet <<- PlotSampleNormSummary(mSet, "snorm_0_", "png", 72, width = NA)
     # F_Delete_Ggraphics()
@@ -679,7 +689,7 @@ MetGUI <- function() {
     print("Normalization Density done!")
   })
   tooltip(widgets$bt_PlotNormalization) <- "To see the Normalization Density Effect."
-  lo_Statistics[9, 1:2] <- widgets$bt_Mummichog <- gbutton("Mummichog", handler = function(h, ...) {
+  lo_Statistics[9, 1:2] <- widgets$bt_Mummichog <- gbutton("Mummichog analysis", handler = function(h, ...) {
     ## Initialize mMum
     rm(mMum)
     mMum <- InitDataObjects("mass_all", "mummichog", FALSE) # Create objects for storing processed data from the MS peaks to pathways module
