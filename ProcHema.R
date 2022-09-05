@@ -990,8 +990,8 @@ F_AddMetaStat <- function(DT,Meta,Vol){
 }
 SingleWhole <- F_AddMetaStat(DT=MergedDT,Meta=s_peak_meta_rbind_PeakGroups,Vol=Volcano)
 SingleWhole2.4 <- F_AddMetaStat(DT=MergedDT2.4,Meta=s_peak_meta_rbind_PeakGroups,Vol=Volcano)
-write.csv(SingleWhole,'SingleWhole.csv')
-write.csv(SingleWhole2.4,'SingleWhole2.4.csv')
+# write.csv(SingleWhole,'SingleWhole.csv')
+# write.csv(SingleWhole2.4,'SingleWhole2.4.csv')
 ## Check the identification using the 20 AAs
 MH20AA<-data.table(read_excel(paste0(Path,"Reference/AAMass.xlsx"),sheet="M+H")) 
 F_CheckMH20AA <- function(DT, MH20AA){
@@ -1091,20 +1091,22 @@ F_FDRCutoff <- function(DT, MatchCutoff=2,TopCutoff=10, NumCutoff=1000){
   print(paste("Pep_Thres", Pep_Thres))
   # Score.dpc<-rbind(data.table('Score'=Dynamic[,dpc],'Legend'='Target'),data.table('Score'=Dynamic[,dpc.decoy.Dec],'Legend'='Decoy'))
   g_density <- ggplot(DynamicDis)  + 
-    ylab('Count') + xlab('Score') + theme_classic() + theme(legend.position="top") + ylim(0,3000)+
-    geom_density(aes(x = Thres, y = after_stat(count),colour = Database), adjust = 2) +
+    ylab('Density') + xlab('Score') + theme_classic() + theme(legend.position="top") + #ylim(0,3000)+
+    # geom_density(aes(x = Thres, y = after_stat(count),colour = Database), adjust = 2) +
+    geom_density(aes(x = Thres,  colour = Database)) + #..scaled..,
     # geom_vline(xintercept = FDR_Thres, linetype="dotted",color = "orange", size=1.5)+
     # annotate(geom = "label", x = FDR_Thres, y = 1000, label = FDR_Thres,color = "orange")+
     geom_vline(xintercept = Pep_Thres, linetype="dotted",color = "red", size=1.5)+
-    annotate(geom = "label", x = Pep_Thres, y = 1000, label = Pep_Thres,color = "red")+
+    annotate(geom = "label", x = Pep_Thres, y = 1, label = Pep_Thres,color = "red")+
     scale_colour_manual( name="Legend",values = c("Target" = "blue","Decoy" = "green"))
   return(g_density)
 }
 F_FDRCutoffComp <- function(Normal, Weighted,FileName,MatchCutoff,TopCutoff,NumCutoff){
   g_Normal <- F_FDRCutoff(DT = Normal, MatchCutoff,TopCutoff,NumCutoff)
   g_Weighted <- F_FDRCutoff(DT = Weighted, MatchCutoff,TopCutoff,NumCutoff)
-  svg(paste(FileName,'MatchCutoff',MatchCutoff,'TopCutoff',TopCutoff,'NumCutoff',NumCutoff,'.svg')) # ,width = 500, height = 500
-  print(plot_grid(g_Normal, g_Weighted,align="h"))
+  grDevices::svg(paste(FileName,'MatchCutoff',MatchCutoff,'TopCutoff',TopCutoff,'NumCutoff',NumCutoff,'.svg')
+                 ,width = 14, height = 7) # 
+  print(plot_grid(g_Normal, g_Weighted,align="h")) #,ncol = 2,nrow = 1
   dev.off()
 }
 # SingleWhole_PreUni <- unique(SingleWhole_Pre,by=c('query_qpid','library_lpid'))
