@@ -16,8 +16,8 @@
 #'   statTargetGUI()
 #' }
 #' @export
-Path <- 'd:/github/MetGUI'
-setwd(Path)
+# Path <- 'd:/github/MetGUI'
+# setwd(Path)
 register(SerialParam()) #disable paralell
 MetGUI <- function() {
   #### Set GUI parameters####
@@ -28,7 +28,7 @@ MetGUI <- function() {
   options(warn = -1, show.error.messages = TRUE)
   RangeRT <- c(35.07705, 1258.41516)
   RangeMZ <- c(250.1777, 1746.5595)
-  Database <<- data.table(read.csv("input/lipidmaps2017Short.csv"))
+  Database <<- data.table(read.csv("d:/github/MetGUI/input/lipidmaps2017Short.csv"))
   color <- grDevices::colors()
   linetype <- c("solid", "dashed", "dotted", "dotdash", "longdash", "twodash", "F8", "431313", "22848222")
   linetype <- rep(linetype, 4)
@@ -711,7 +711,7 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_PlotNormalization) <- "mummichog pathway enrichment"
   
-  lo_Statistics[10, 1:2] <- widgets$bt_PathwayNetwork <- gbutton("Pathway network", handler = function(h, ...) {
+  lo_Statistics[10, 1:2] <- widgets$bt_PathwayNetwork <- gbutton("Pathway network visualisation", handler = function(h, ...) {
     ## Network view of meta-analysis
     mMum<-PlotMSPeaksCpdEcpdNetwork(mMum, "cpd", 0.25, "static", "fr", "YlOrRd", 3.5)
     mMum<-PlotMSPeaksCpdEcpdNetwork(mMum, "ec", 0.25, "static", "fr", "YlOrRd", 3.5)
