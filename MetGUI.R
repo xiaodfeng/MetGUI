@@ -1,9 +1,11 @@
+# This file contains functions used for the graphic user interface
+
 #' @name MetGUI
 #' @title MetGUI for software
 #' @description The MetGUI software.
 #' @author Xiaodong Feng fengxdong@outlook.com
 #' @references
-#' https://doi.org/10.1101/2020.10.10.334342
+#' https://doi.org/10.1016/j.aca.2021.338674
 #' @keywords GUI
 #' @keywords Metabolomics
 #' @keywords Statistical analysis
@@ -11,16 +13,12 @@
 #' @details  RGTK2 and GTK+ are required for MetGUI. We recommend the 64-bit
 #' version of Windows 7, or newer for most users for RGTK2 installation.
 #' The R 4.0.1 and RGtk2 2.20.36 sailed through the test.
-#' @examples
-#' if (interactive()) {
-#'   statTargetGUI()
-#' }
 #' @export
-# Path <- 'd:/github/MetGUI'
-# setwd(Path)
-register(SerialParam()) #disable paralell
 MetGUI <- function() {
   #### Set GUI parameters####
+  # Path <- 'd:/github/MetGUI'
+  # setwd(Path)
+  register(SerialParam()) # disable paralell
   F_Capture <- function(Code) {
     capture.output(Code, file = "Output.log", type = "message", append = TRUE)
   }
@@ -96,8 +94,8 @@ MetGUI <- function() {
   ### Set Experimental design frame in ImportData tab
   lo_Dataset[4, 1] <- widgets$bt_importdata <- gbutton("Import data", handler = function(h, ...) {
     # Define a data.frame with sample descriptions
-    Group <<- c(rep('Hyp',3), rep('Norm',3))
-    pd <- data.frame(file = cdffiles, sample_group = c(rep('Hyp',3), rep('Norm',3)))
+    Group <<- c(rep("Hyp", 3), rep("Norm", 3))
+    pd <- data.frame(file = cdffiles, sample_group = c(rep("Hyp", 3), rep("Norm", 3)))
     print(pd)
     # Read the files
     data <- readMSData(cdffiles, pd = new("NAnnotatedDataFrame", pd), mode = "onDisk")
@@ -680,7 +678,7 @@ MetGUI <- function() {
     mSet <<- PlotNormSummary(mSet, "norm_0_", "png", 72, width = NA)
     mSet <<- PlotSampleNormSummary(mSet, "snorm_0_", "png", 72, width = NA)
     # F_Delete_Ggraphics()
-    svg(paste0('Normalization Density','.svg'))
+    svg(paste0("Normalization Density", ".svg"))
     par(mar = c(0, 0, 0, 0))
     plot.new()
     rasterImage(load.image(mSet[["imgSet"]][["summary_norm"]]), 0, 0, 0.5, 1)
@@ -743,46 +741,46 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_PathwayNetwork) <- "Network view of meta-analysis"
   
-  
-
-  ##Set Volcano button in Statistics tab
-  lo_Statistics[1,3]<-"Fold change"
-  lo_Statistics[1,4]<-ed_FCThreshold<-gedit(text = "2", width = 4)  
+  ## Set Volcano button in Statistics tab
+  lo_Statistics[1, 3] <- "Fold change"
+  lo_Statistics[1, 4] <- ed_FCThreshold <- gedit(text = "2", width = 4)
   tooltip(ed_FCThreshold) <- "Calculate the fold change between WT and KO groups, each point represents a peak. 
                                     The default Fold change threshold is set as 2"
-  lo_Statistics[2,3]<-"Non-parametric"
-  lo_Statistics[2,4:5]<-cb_nonpar<-gcombobox(c("FALSE","TRUE"))
-  
-  lo_Statistics[3,3]<-"p-value cutoff"
-  lo_Statistics[3,4]<-ed_threshp<-gedit(text = "0.05", width = 4) 
-  
-  lo_Statistics[4,3]<-"paired"
-  lo_Statistics[4,4:5]<-cb_paired<-gcombobox(c("FALSE","TRUE"))
+  lo_Statistics[2, 3] <- "Non-parametric"
+  lo_Statistics[2, 4:5] <- cb_nonpar <- gcombobox(c("FALSE", "TRUE"))
+
+  lo_Statistics[3, 3] <- "p-value cutoff"
+  lo_Statistics[3, 4] <- ed_threshp <- gedit(text = "0.05", width = 4)
+
+  lo_Statistics[4, 3] <- "paired"
+  lo_Statistics[4, 4:5] <- cb_paired <- gcombobox(c("FALSE", "TRUE"))
   tooltip(ed_threshp) <- "perform t-test analysis. This univariate analyses provide a preliminary overview about
            features that are potentially significant in discriminating the conditions under study.For paired fold change analysis, the algorithm rst counts the total number of pairs with fold changes
            that are consistently above/below the specified FC threshold for each variable. A variable will be reported
            as significant if this number is above a given count threshold (default > 75% of pairs/variable)"
-  lo_Statistics[5,3:4] <- gbutton("Run volcano plot", handler = function(h,...) {
-    mSet<<-Volcano.Anal(mSet, fcthresh=as.numeric(svalue(ed_FCThreshold)),
-                        nonpar=as.logical(svalue(cb_nonpar)), 
-                        threshp=as.numeric(svalue(ed_threshp)),
-                        paired=as.logical(svalue(cb_paired)), 
-                        cmpType=1,equal.var=TRUE, pval.type="raw")
-    mSet<<-PlotVolcano(mSet, "Volcano", 0,"png", dpi=72, width=NA)
-    # F_Delete_Ggraphics()
-    svg(paste0('Volcano Plot','.svg'))
-    par(mar=c(0,0,0,0)) 
-    plot.new()
-    #plot(1:10,main="volcano",ty="n",xlab="",ylab="")
-    rasterImage(load.image(mSet[["imgSet"]][["volcano"]]),0,0,1,1)
-    dev.off()
-    print("Volcano Plot done!")
-  })
-  ##Set PCA gframe in Statistics tab
-  lo_Statistics[6,3:4]<- widgets$bt_PCA <- gbutton("Run PCA", handler = function(h,...) {
-    mSet<<-PCA.Anal(mSet)
-    print("Principle Component Analysis done!")
-  })
+ lo_Statistics[5, 3:4] <- gbutton("Run volcano plot", handler = function(h, ...) {
+   mSet <<- Volcano.Anal(mSet,
+     fcthresh = as.numeric(svalue(ed_FCThreshold)),
+     nonpar = as.logical(svalue(cb_nonpar)),
+     threshp = as.numeric(svalue(ed_threshp)),
+     paired = as.logical(svalue(cb_paired)),
+     cmpType = 1, equal.var = TRUE, pval.type = "raw"
+   )
+   mSet <<- PlotVolcano(mSet, "Volcano", 0, "png", dpi = 72, width = NA)
+   # F_Delete_Ggraphics()
+   svg(paste0("Volcano Plot", ".svg"))
+   par(mar = c(0, 0, 0, 0))
+   plot.new()
+   # plot(1:10,main="volcano",ty="n",xlab="",ylab="")
+   rasterImage(load.image(mSet[["imgSet"]][["volcano"]]), 0, 0, 1, 1)
+   dev.off()
+   print("Volcano Plot done!")
+ })
+  ## Set PCA gframe in Statistics tab
+ lo_Statistics[6, 3:4] <- widgets$bt_PCA <- gbutton("Run PCA", handler = function(h, ...) {
+   mSet <<- PCA.Anal(mSet)
+   print("Principle Component Analysis done!")
+ })
   tooltip(widgets$bt_PCA) <- "PCA is an unsupervised method aiming to find the directions that best explain the variance in a data
            set (X) without referring to class labels (Y). The data are summarized into much fewer variables called
            scores which are weighted average of the original variables. The weighting profiles are called loadings.
