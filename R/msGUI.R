@@ -1,24 +1,26 @@
-# This file contains functions used for the graphic user interface
-
-#' @name MetGUI
-#' @title MetGUI for software
-#' @description The MetGUI software.
+#' @name msGUI
+#' @title msGUI for software
+#' @description The msGUI software.
 #' @author Xiaodong Feng fengxdong@outlook.com
 #' @references
-#' https://doi.org/10.1016/j.aca.2021.338674
+#' https://doi.org/10.1101/2020.10.10.334342
 #' @keywords GUI
 #' @keywords Metabolomics
 #' @keywords Statistical analysis
 #' @return The output of GUI
-#' @details  RGTK2 and GTK+ are required for MetGUI. We recommend the 64-bit
+#' @details  RGTK2 and GTK+ are required for msGUI. We recommend the 64-bit
 #' version of Windows 7, or newer for most users for RGTK2 installation.
 #' The R 4.0.1 and RGtk2 2.20.36 sailed through the test.
+#' @examples
+#' if (interactive()) {
+#'   statTargetGUI()
+#' }
 #' @export
-MetGUI <- function() {
+Path <- 'd:/github/GUI/msGUI/'
+setwd(Path)
+register(SerialParam()) #disable paralell
+msGUI <- function() {
   #### Set GUI parameters####
-  # Path <- 'd:/github/MetGUI'
-  # setwd(Path)
-  register(SerialParam()) # disable paralell
   F_Capture <- function(Code) {
     capture.output(Code, file = "Output.log", type = "message", append = TRUE)
   }
@@ -26,19 +28,19 @@ MetGUI <- function() {
   options(warn = -1, show.error.messages = TRUE)
   RangeRT <- c(35.07705, 1258.41516)
   RangeMZ <- c(250.1777, 1746.5595)
-  Database <<- data.table(read.csv("d:/github/MetGUI/input/lipidmaps2017Short.csv"))
+  Database <<- data.table(read.csv("inst/extdata/Database/lipidmaps2017Short.csv"))
   color <- grDevices::colors()
   linetype <- c("solid", "dashed", "dotted", "dotdash", "longdash", "twodash", "F8", "431313", "22848222")
   linetype <- rep(linetype, 4)
   widgets <- list()
   val <- list()
   val$binSize = val$fwhm = val$max = val$snthresh = val$steps = val$mzdiff = val$ppm = val$peakwidthMin = val$peakwidthMax = val$snthreshCentWave = val$noise = val$binSizeRT = val$bw = val$binSizeGrouping = val$ppmIsotope = val$ppmWindow = val$rtWindow = val$Database = val$DatabaseSearchRelativeMassDeviation = val$FragmentPeakMatchAbsoluteMassDeviation = val$FragmentPeakMatchRelativeMassDeviation = val$ppmHomeBuilt = -1
-    # win <- gwindow("MetGUI", visible=FALSE,
+    # win <- gwindow("msGUI", visible=FALSE,
   #                handler = function(h, ...) {
   #                  gtkMainQuit() # stop main loop when windows is closed.
   #                }
   # )
-  win <- gWidgets2::gwindow("MetGUI", expand = FALSE, fill = FALSE, height = 800, width = 800)
+  win <- gWidgets2::gwindow("msGUI", expand = FALSE, fill = FALSE, height = 800, width = 800)
   nb <- gnotebook(cont = win, fill = TRUE, expand = TRUE)
   sb <- gstatusbar("Contact Us: fengxdong@outlook.com  University of Groningen", container = win)
   font(sb) <- list(size = 9, color = "blue")
@@ -48,7 +50,7 @@ MetGUI <- function() {
   gp_ImportData <- ggroup(horizontal = FALSE, cont = nb, label = "Workflow")
   lo_ImportData <- glayout(cont = gp_ImportData, horizontal = F)
   ## Set Dataset frame in ImportData tab
-  lo_ImportData[1, 1] <- gf_Dataset <- gframe("1 Data transformation", horizontal = F, expand = TRUE)
+  lo_ImportData[1, 1] <- gf_Dataset <- gframe("Spectra data preparation", horizontal = F, expand = TRUE)
   lo_Dataset <- glayout(cont = gf_Dataset, horizontal = F)
   lo_Dataset[1, 1] <- widgets$bt_folder <- gbutton("Select dataset folder", handler = function(h, ...) {
     widgets$my_path <- choose.dir(caption = "Select folder")
@@ -61,14 +63,14 @@ MetGUI <- function() {
       # show the loaded files below
       ed_group <<- list()
       for (i in 1:length(cdffiles)) {
-        lo_Dataset[i + 4, 1] <- name[i]
-        lo_Dataset[i + 4, 2] <- ed_group[i] <<- gedit(text = "Norm", width = 4)
+        lo_Dataset[i + 3, 1] <- name[i]
+        lo_Dataset[i + 3, 2] <- ed_group[i] <<- gedit(text = "Norm", width = 4)
       }
     }
   })
   tooltip(widgets$bt_folder) <- "Select the folder for all the raw data to be processed"
   ### Select export folder
-  lo_Dataset[2, 1] <- widgets$bt_selectexportfolder <- gbutton("Select export folder", handler = function(h, ...) {
+  lo_Dataset[1, 2] <- widgets$bt_selectexportfolder <- gbutton("Select export folder", handler = function(h, ...) {
     path <- choose.dir(caption = "Select export folder")
     if (length(path) == 0) {
       galert("Please Select the export folder", title = "File Selection Problems", delay = 1)
@@ -79,7 +81,7 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_selectexportfolder) <- "Select the folder to save all the exported results"
   ## Set Parameters frame in ImportData tab
-  lo_Dataset[3, 1] <- widgets$bt_selectparameterfile <- gbutton("Select parameter file", handler = function(h, ...) {
+  lo_Dataset[2, 1] <- widgets$bt_selectparameterfile <- gbutton("Select parameter file", handler = function(h, ...) {
     Parameters <- choose.files(caption = "Select Parameter File")
     if (length(Parameters) == 0) {
       galert("Please Select the Parameter File to be Processed", title = "File Selection Problems", delay = 1)
@@ -92,10 +94,9 @@ MetGUI <- function() {
   tooltip(widgets$bt_selectparameterfile) <- "Select the parameter file"
 
   ### Set Experimental design frame in ImportData tab
-  lo_Dataset[4, 1] <- widgets$bt_importdata <- gbutton("Import data", handler = function(h, ...) {
+  lo_Dataset[2, 2] <- widgets$bt_importdata <- gbutton("Import data", handler = function(h, ...) {
     # Define a data.frame with sample descriptions
-    Group <<- c(rep("Hyp", 3), rep("Norm", 3))
-    pd <- data.frame(file = cdffiles, sample_group = c(rep("Hyp", 3), rep("Norm", 3)))
+    pd <- data.frame(file = cdffiles, sample_group = c(rep('Hyp',3), rep('Norm',3)))
     print(pd)
     # Read the files
     data <- readMSData(cdffiles, pd = new("NAnnotatedDataFrame", pd), mode = "onDisk")
@@ -108,18 +109,7 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_importdata) <- "Import the data into an object"
   ### Set TIC in Design frame
-  lo_Dataset[1, 2] <- widgets$bt_plotTIC <- gbutton("Plot TIC", handler = function(h, ...) {
-    # F_Delete_Ggraphics()
-    # pdf(paste0('Total ion current','.pdf'))
-    svg(paste0('Total ion current','.svg'))
-    bpis <- chromatogram(Raw_data, aggregationFun = "sum")
-    plot(bpis, col = group_colors[name])
-    legend("topright", legend = name, col = group_colors[name], lty = 1, cex = 0.8) # ,box.lty=0
-    dev.off()
-    print("Plot Total ion current Done!")
-  })
-  tooltip(widgets$bt_plotTIC) <- "Plot the total ion current of the raw data"
-  lo_Dataset[2, 2] <- widgets$bt_plotBPC <- gbutton("Plot BPC", handler = function(h, ...) {
+  lo_Dataset[3, 1] <- widgets$bt_plotTIC <- gbutton("Plot TIC", handler = function(h, ...) {
     # F_Delete_Ggraphics()
     # pdf(paste0('Total ion current','.pdf'))
     svg(paste0('Total ion current','.svg'))
@@ -127,11 +117,11 @@ MetGUI <- function() {
     plot(bpis, col = group_colors[name])
     legend("topright", legend = name, col = group_colors[name], lty = 1, cex = 0.8) # ,box.lty=0
     dev.off()
-    print("Plot BPC Done!")
+    print("Plot Total ion current Done!")
   })
-  tooltip(widgets$bt_plotBPC) <- "Plot the BPC of the raw data"
+  tooltip(widgets$bt_plotTIC) <- "Plot the total ion current of the raw data"
 
-  lo_Dataset[3, 2] <- widgets$bt_export <- gbutton("Export metadata", handler = function(h, ...) {
+  lo_Dataset[3, 2] <- widgets$bt_export <- gbutton("Export description", handler = function(h, ...) {
     ## extract MS1 according to function
     # fun_1 <- grep(fData(Raw_data)$msLevel, pattern = "1")
     # raw_data_all[fun_1]
@@ -141,17 +131,17 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_export) <- "Export base peak information from the raw dataset"
   
-  lo_Dataset[4, 2] <- gbutton("Export parameter", handler = function(h, ...) {
-    ParametersExported <- data.table()
-    ParametersExported <- Parameter
-    UserValues <- c(binSizeValue, fwhmValue, maxValue, snthreshValue, stepsValue, mzdiffValue, ppmValue, peakwidthMinValue, peakwidthMaxValue, snthreshCentWaveValue, noiseValue, binSizeRTValue, bwValue, binSizeGroupingValue, ppmIsotopeValue, ppmWindowValue, rtWindowValue, DatabaseValue, DatabaseSearchRelativeMassDeviationValue, FragmentPeakMatchAbsoluteMassDeviationValue, FragmentPeakMatchRelativeMassDeviationValue, ppmHomeBuiltValue)
-    ParametersExported[, Values := UserValues]
-    write.csv(ParametersExported, "Parameters_ParametersExported.csv")
-    print("Parameters exported successfully!")
-  })
+  # lo_Dataset[7, 1:2] <- gbutton("Export parameter file", handler = function(h, ...) {
+  #   ParametersExported <- data.table()
+  #   ParametersExported <- Parameter
+  #   UserValues <- c(binSizeValue, fwhmValue, maxValue, snthreshValue, stepsValue, mzdiffValue, ppmValue, peakwidthMinValue, peakwidthMaxValue, snthreshCentWaveValue, noiseValue, binSizeRTValue, bwValue, binSizeGroupingValue, ppmIsotopeValue, ppmWindowValue, rtWindowValue, DatabaseValue, DatabaseSearchRelativeMassDeviationValue, FragmentPeakMatchAbsoluteMassDeviationValue, FragmentPeakMatchRelativeMassDeviationValue, ppmHomeBuiltValue)
+  #   ParametersExported[, Values := UserValues]
+  #   write.csv(ParametersExported, "Parameters_ParametersExported.csv")
+  #   print("Parameters exported successfully!")
+  # })
   #### PeakDetection ####
   ## set CentWave parameters on gp_CentWave
-  lo_ImportData[1, 2] <- gf_CentWave <- gframe("2 Peak detection", horizontal = F, expand = TRUE)
+  lo_ImportData[1, 2] <- gf_CentWave <- gframe("Peak detection", horizontal = F, expand = TRUE)
   lo_CentWave <- glayout(cont = gf_CentWave, horizontal = F)
   lo_CentWave[1, 1] <- glabel("Mass accuracy")
   lo_CentWave[1, 2] <- widgets$ed_ppm <- gedit(text = "1", width = 4)
@@ -234,8 +224,8 @@ MetGUI <- function() {
     write.csv(xdata1@msFeatureData[["chromPeaks"]], "PeakDetection_xdata1@msFeatureData_chromPeaks.csv")
     print("Results exported successfully!")
   })
-  #### Spectra pre-processing ####
-  lo_ImportData[1, 3] <- gf_Processing <- gframe("3 Spectrum pre-processing", horizontal = F, expand = TRUE)
+  #### Spectra data pre-processing ####
+  lo_ImportData[1, 3] <- gf_Processing <- gframe("Spectra data pre-processing", horizontal = F, expand = TRUE)
   lo_Processing <- glayout(cont = gf_Processing, horizontal = F)
   ### Set Obiwarp RT alignment frame in Retention Time Alignment tab
   lo_Processing[1, 1] <- glabel("binSize") ### set binSize
@@ -265,16 +255,15 @@ MetGUI <- function() {
   #   print("Plot RT Alignment effect Done!")
   # })
   # tooltip(widgets$bt_TIC) <- "Plot the TIC before and after retention time alignment"
-  lo_Processing[3, 1] <- glabel(paste("rtMin (s)", sep = ""))
+  lo_Processing[3, 1] <- glabel(paste("rtMin (>", round(RangeRT[1]), " s)", sep = ""))
   lo_Processing[3, 2] <- widgets$rtMin <- gedit(text = "760", width = 6)
-  lo_Processing[4, 1] <- glabel(paste("rtMax (s)", sep = ""))
+  lo_Processing[4, 1] <- glabel(paste("rtMax (<", round(RangeRT[2]), " s)", sep = ""))
   lo_Processing[4, 2] <- widgets$rtMax <- gedit(text = "810", width = 6)
-  lo_Processing[5, 1] <- glabel(paste("mzMin (Da)", sep = ""))
-  lo_Processing[5, 2] <- widgets$mzMin <- gedit(text = "175.10", width = 6)
-  lo_Processing[6, 1] <- glabel(paste("mzMax (Da)", sep = ""))
-  lo_Processing[6, 2] <- widgets$mzMax <- gedit(text = "175.20", width = 6)
-  lo_Processing[7, 1:2] <- ed_PlotAligned <- gradio(c('TIC','BPC','EIC'), horizontal=TRUE, width = 4)
-  lo_Processing[8, 1:2] <- widgets$bt_ExtractedIonChromatogram <- gbutton("Plot raw and aligned EICs", handler = function(h, ...) {
+  lo_Processing[5, 1] <- glabel(paste("mzMin (>", round(RangeMZ[1]), ")", sep = ""))
+  lo_Processing[5, 2] <- widgets$mzMin <- gedit(text = "175.1", width = 6)
+  lo_Processing[6, 1] <- glabel(paste("mzMax (<", round(RangeMZ[2]), ")", sep = ""))
+  lo_Processing[6, 2] <- widgets$mzMax <- gedit(text = "175.2", width = 6)
+  lo_Processing[7, 1:2] <- widgets$bt_ExtractedIonChromatogram <- gbutton("Plot alignment effect EIC", handler = function(h, ...) {
     val$mzMin <<- as.numeric(svalue(widgets$mzMin))
     val$mzMax <<- as.numeric(svalue(widgets$mzMax))
     val$rtMin <<- as.numeric(svalue(widgets$rtMin))
@@ -306,7 +295,7 @@ MetGUI <- function() {
   lo_Processing[3, 3] <- glabel("minFraction")
   lo_Processing[3, 4] <- ed_minFraction <- gedit(text = "0.6", width = 8)
 
-  lo_Processing[4, 3:4] <- widgets$bt_DensityProcessing <- gbutton("Peak grouping in dataset", handler = function(h, ...) {
+  lo_Processing[4, 3:4] <- widgets$bt_DensityProcessing <- gbutton("Run grouping", handler = function(h, ...) {
     val$bw <<- as.numeric(as.character(Parameter[Parameters == "bw", Values]))
     if (val$bw == -1) {
       val$bw <<- as.numeric(svalue(ed_bw))
@@ -333,13 +322,13 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_DensityGrouping) <- "groupChromPeaks-density method performs correspondence (chromatographic peak grouping) based on the density (distribution) of identified peaks along the retention time axis within slices of overlapping mz ranges. All peaks (from the same or from different samples) being close on the retention time axis are grouped into a feature (peak group).bw: The maximum expected RT deviation across samples."
 
-  lo_Processing[5, 3:4] <- gbutton("Export grouped peaks", handler = function(h, ...) {
+  lo_Processing[5, 3:4] <- gbutton("Export grouping", handler = function(h, ...) {
     write.csv(xdata1@msFeatureData[["featureDefinitions"]], "Grouping_xdata1_msFeatureData_featureDefinitions.csv")
     # write.csv(xdata2@msFeatureData[["featureDefinitions"]],"Grouping_xdata2_msFeatureData_featureDefinitions.csv")
     print("Results exported successfully!")
   })
   ## Set GroupingEffect gframe in Grouping tab
-  lo_Processing[6, 3:4] <- widgets$bt_PlotGrouping <- gbutton("Plot peak grouping", handler = function(h, ...) {
+  lo_Processing[6, 3:4] <- widgets$bt_PlotGrouping <- gbutton("Plot grouping effect", handler = function(h, ...) {
     # F_Delete_Ggraphics()
     svg(paste0('Grouping effect','.svg'))
     plotChromPeakDensity(xdata1,
@@ -360,12 +349,12 @@ MetGUI <- function() {
   tooltip(widgets$bt_FillMissing) <- "Integrate signal in the mz-rt area of a feature (chromatographic peak group) for samples in which no chromatographic peak for this feature was identified and add it to the chromPeaks. Such peaks will have a value of 1 in the is_filled column of the chromPeaks matrix of the object."
 
 
-  #### Annotation ####
-  lo_ImportData[2, 1] <- gf_Isotope <- gframe("4 Annotation", horizontal = F, expand = TRUE)
+  #### Isotope filtration ####
+  lo_ImportData[2, 1] <- gf_Isotope <- gframe("Isotope filtration", horizontal = F, expand = TRUE)
   lo_Isotope <- glayout(cont = gf_Isotope, horizontal = F)
   ## Set IsotopeFilteration gframe in Fill missing peaks tab
-  # lo_Isotope[1, 1] <- glabel("ppm Isotope")
-  # lo_Isotope[1, 2] <- ed_ppmIsotope <- gedit(text = "10", width = 4)
+  lo_Isotope[1, 1] <- glabel("ppm Isotope")
+  lo_Isotope[1, 2] <- ed_ppmIsotope <- gedit(text = "10", width = 4)
   lo_Isotope[2, 1:2] <- widgets$bt_Isotope <- gbutton("Isotope filteration", handler = function(h, ...) {
     val$ppmIsotope <<- as.numeric(as.character(Parameter[Parameters == "ppmIsotope", Values]))
     if (val$ppmIsotope == -1) {
@@ -387,8 +376,8 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_Isotope) <- "Annotate isotope peaks using CAMERA. ppm is the ppm error for the search "
   ## Set Remove Duplicates gframe in Fill missing peaks tab
-  # lo_Isotope[3, 1] <- glabel("ppm Window")
-  # lo_Isotope[3, 2] <- ed_ppmWindow <- gedit(text = "5", width = 4)
+  lo_Isotope[3, 1] <- glabel("ppm Window")
+  lo_Isotope[3, 2] <- ed_ppmWindow <- gedit(text = "5", width = 4)
   lo_Isotope[4, 1] <- glabel("rt Window")
   lo_Isotope[4, 2] <- ed_rtWindow <- gedit(text = "5", width = 4)
   lo_Isotope[5, 1:2] <- widgets$bt_RemoveDup <- gbutton("Remove duplicates", handler = function(h, ...) {
@@ -407,16 +396,10 @@ MetGUI <- function() {
     PeaksCopy <- Peaks
     Duplist <- list()
     Duplicates <- data.table()
-    MRP <- 30000
-    RefMZ <- 400
-    A <- 1 / (MRP * (RefMZ^0.5))
-    B <- A / 2.35482
     for (id in seq(1, nrow(Peaks), 1)) {
       # for each line of Peaks, get the duplicates within +/- 5PPM and +/- 20 rt
-      Duplist[[id]] <- Peaks[(abs(mz - PeaksCopy$mz[id]) < B * mz ^1.5 + mz / 1000000) &
-        (abs(rt - PeaksCopy$rt[id]) < val$rtWindow), ]
-      # Duplist[[id]] <- Peaks[(((mz - PeaksCopy$mz[id]) / mz) * 10^6 > -val$ppmWindow) & (((mz - PeaksCopy$mz[id]) / mz) * 10^6 < val$ppmWindow) & 
-      #                          ((rt - PeaksCopy$rt[id]) < val$rtWindow) & ((rt - PeaksCopy$rt[id]) > -val$rtWindow), ]
+      Duplist[[id]] <- Peaks[(((mz - PeaksCopy$mz[id]) / mz) * 10^6 > -val$ppmWindow) & (((mz - PeaksCopy$mz[id]) / mz) * 10^6 < val$ppmWindow) & 
+                               ((rt - PeaksCopy$rt[id]) < val$rtWindow) & ((rt - PeaksCopy$rt[id]) > -val$rtWindow), ]
       Duplist[[id]] <- Duplist[[id]][-c(1)] # get rid of the first line
       # Bind all the candidates together
       Duplicates <- rbind(Duplicates, Duplist[[id]])
@@ -438,7 +421,7 @@ MetGUI <- function() {
   ## Set Scatter Plot gframe in Fill missing peaks tab
   lo_Isotope[7, 1] <- glabel("Log")
   lo_Isotope[7, 2] <- cb_log <- gcombobox(c("2", "10"), expand = T)
-  lo_Isotope[8, 1:2] <- widgets$bt_Scatter <- gbutton("Plot annotation", handler = function(h, ...) {
+  lo_Isotope[8, 1:2] <- widgets$bt_Scatter <- gbutton("Plot scatter plot", handler = function(h, ...) {
     ### figure
     if (as.numeric(svalue(cb_log)) == 2) {
       g <- ggplot(Feature, aes(mz, rt)) +
@@ -458,13 +441,13 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_Scatter) <- "Scatter Plot of detected features, the colour indicates the intensiy of the features"
 
-  #### Metabolite identification####
-  lo_ImportData[2, 2] <- gf_Identification <- gframe("5 Metabolite identification", horizontal = F, expand = TRUE)
+  #### Identification####
+  lo_ImportData[2, 2] <- gf_Identification <- gframe("Identification", horizontal = F, expand = TRUE)
   lo_Identification <- glayout(cont = gf_Identification, horizontal = F)
   ## Set Preprocessing gframe in Identification tab
-  lo_Identification[1, 1:2] <- gbutton("Create query library", handler = function(h, ...) {
+  lo_Identification[1, 1:2] <- gbutton("Link MS1 with MS2", handler = function(h, ...) {
     print("Link MS1 with MS2 is working...")
-    cdfs <<- dir("d:/github/MetGUI/input/NormalVSHYP", full.names = TRUE,recursive = TRUE)
+    cdfs <<- dir("d:/github/GUI/input/NormalVSHYP", full.names = TRUE,recursive = TRUE)
     pa <<- purityA(cdfs)
     # if (length(unique(msLevel(xdata1))) != 1) {
     #   xdata1 <- filterMsLevel(xdata1, msLevel = 1)
@@ -474,9 +457,10 @@ MetGUI <- function() {
     pa <<- averageAllFragSpectra(pa) # treat the inter and intra fragmentation scans the same
     # pa@puritydf
     print("Link MS1 with MS2 done!")
+  })
+  lo_Identification[2, 1:2] <- gbutton("Create query database", handler = function(h, ...) {
     print("Create query database is working...")
-    q_dbPthValue <<- msPurity::createDatabase(pa, xdata1, dbName = "q_dbPth.sqlite")
-    q_dbPthValue <<- 'd:/github/MetGUI/output/q_dbPth.sqlite'
+    q_dbPthValue <- msPurity::createDatabase(pa, xdata1, dbName = "q_dbPth.sqlite")
     qon <- DBI::dbConnect(RSQLite::SQLite(), q_dbPthValue)
     ## Extract from the query database the "c_peak_groups", which will be used for subset.
     # c_peak_groups <- qon %>%
@@ -487,18 +471,17 @@ MetGUI <- function() {
     # q_xcmsGroupsValue <- c_peak_groups$grpid # 455 # use this index for mass query
     print("Create query database done!")
   })
-  lo_Identification[2, 1:2] <- gbutton("Create consensus library", handler = function(h, ...) {
+  lo_Identification[3, 1:2] <- gbutton("Create library database", handler = function(h, ...) {
     print("Create library database is working...")
-    l_dbPthValue <<- "d:/github/MetGUI/input/MoNA-export-LC-MS-MS_Spectra.sqlite"
+    l_dbPthValue <- "d:/github/GUI/msGUI/input/MoNA-export-LC-MS-MS_Spectra.sqlite"
     con <- DBI::dbConnect(RSQLite::SQLite(), l_dbPthValue)
     print("Create library database done!")
   })
   
   ## Set HomeBuilt gframe in Identification tab
-  lo_Identification[3, 1] <- glabel("MRP MS2")
-  lo_Identification[3, 2] <- ed_MRPMS2 <- gedit(text = "7500", width = 4)
-  lo_Identification[4, 1:2] <- ed_MS2 <- gradio(c('Exp. MS2','In-silico MS2'), horizontal=TRUE, width = 4)
-  lo_Identification[5, 1:2] <- widgets$bt_HomeBuilt <- gbutton("Run identification", handler = function(h, ...) {
+  lo_Identification[4, 1] <- glabel("MRP MS2")
+  lo_Identification[4, 2] <- ed_MRPMS2 <- gedit(text = "7500", width = 4)
+  lo_Identification[5, 1:2] <- widgets$bt_HomeBuilt <- gbutton("Run experimental", handler = function(h, ...) {
     print("Experimental Identification is working...")
     result <- spectralMatching(
       q_dbPth = q_dbPthValue, l_dbPth = l_dbPthValue
@@ -510,6 +493,12 @@ MetGUI <- function() {
   })
   tooltip(widgets$bt_HomeBuilt) <- "Experimental Identification"
   
+  lo_Identification[6, 1:2] <- gbutton("Export experimental", handler = function(h, ...) {
+    write.csv(result,'Experimental Identification.csv')
+    print("Export identifications of HomeBuilt Done!")
+  })
+  
+  
   ## Set Metfrag gframe in Identification tab
   
   # lo_Identification[7, 1] <- glabel("DatabaseSearchRelativeMassDeviation")
@@ -518,107 +507,103 @@ MetGUI <- function() {
   # lo_Identification[8, 2] <- ed_FragmentPeakMatchAbsoluteMassDeviation <- gedit(text = "0.005", width = 6)
   # lo_Identification[9, 1] <- glabel("FragmentPeakMatchRelativeMassDeviationv(PPM):")
   # lo_Identification[9, 2] <- ed_FragmentPeakMatchRelativeMassDeviation <- gedit(text = "8", width = 6)
-  # lo_Identification[5, 1:2] <- widgets$bt_Metfrag <- gbutton("Run metfrag", handler = function(h, ...) {
-  #   F_Identification <- function(x) { # first define the identification function
-  #     candidates_null <- data.frame(Null = "+")
-  #     NeutralPrecursorMass <- as.numeric(x[18]) #
-  #     PrecuresorMZ <- as.numeric(x[1])
-  #     RT <- as.numeric(x[4])
-  #     rtmin <- as.numeric(x[5])
-  #     rtmax <- as.numeric(x[6])
-  #     # print(RT)
-  #     settingsObject[["MetFragDatabaseType"]] <- c("LocalCSV") # can try ExtendedPubChem next time
-  #     settingsObject[["LocalDatabasePath"]] <- c("inst/extdata/Database/lipidmaps2017Short.csv") #
-  #     settingsObject[["NeutralPrecursorMass"]] <- NeutralPrecursorMass # neutral monoisotopic precursor mass
-  #     # peak<-subset(MS3$MS2,(rt-RT)<60&(rt-RT)>-60)
-  #     peak <- subset(MS3$MS2, ((rt < (rtmax + 5)) & (rt > (rtmin - 5)) & (precursorMz > (PrecuresorMZ - 0.01)) & (precursorMz < (PrecuresorMZ + 0.01))))
-  #     peak_mz_intensity <- peak[, c(2, 6)]
-  #     peak_mz_intensity <- as.matrix(peak_mz_intensity, ncol = 2, byrow = TRUE)
-  #     settingsObject[["PeakList"]] <- peak_mz_intensity # get the peak list from MS2
-  #     candidates <- data.frame()
-  #     scored.candidates <- data.frame()
-  #     candidates <- run.metfrag(settingsObject)
-  #     if (is.null(candidates$Score)) {
-  #       scored.candidates <- candidates_null
-  #     } # fill candidates with null created
-  #     else {
-  #       scored.candidates <- candidates # add the identified candidates to scored.candidates
-  #       # add extra information to the identifications
-  #       scored.candidates$RentionTime <- RT
-  #       scored.candidates$rtmin <- rtmin
-  #       scored.candidates$rtmax <- rtmax
-  #       scored.candidates$NeutralPrecursorMass <- NeutralPrecursorMass
-  #       scored.candidates$PrecuresorMZ <- PrecuresorMZ
-  #       scored.candidates$mzmin <- x[2]
-  #       scored.candidates$mzmax <- x[3]
-  #       scored.candidates$npeaks <- x[7]
-  #       scored.candidates$Intensity1 <- x[10]
-  #       scored.candidates$Intensity2 <- x[11]
-  #       scored.candidates$IntensityMean <- x[15]
-  #       scored.candidates$isotops <- x[12] #
-  #       scored.candidates$adduct <- x[17]
-  #     }
-  #     return(scored.candidates)
-  #   }
-  #   settingsObject <- list()
-  #   
-  #   val$DatabaseSearchRelativeMassDeviation <<- as.character(Parameter[Parameters == "DatabaseSearchRelativeMassDeviation", Values])
-  #   if (val$DatabaseSearchRelativeMassDeviation == -1) {
-  #     val$DatabaseSearchRelativeMassDeviation <<- 10
-  #   }
-  #   
-  #   val$FragmentPeakMatchAbsoluteMassDeviation <<- as.character(Parameter[Parameters == "FragmentPeakMatchAbsoluteMassDeviation", Values])
-  #   if (val$FragmentPeakMatchAbsoluteMassDeviation == -1) {
-  #     val$FragmentPeakMatchAbsoluteMassDeviation <<- 0.005
-  #   }
-  #   
-  #   val$FragmentPeakMatchRelativeMassDeviation <<- as.character(Parameter[Parameters == "FragmentPeakMatchRelativeMassDeviation", Values])
-  #   if (val$FragmentPeakMatchRelativeMassDeviation == -1) {
-  #     val$FragmentPeakMatchRelativeMassDeviation <<- 10
-  #   }
-  #   
-  #   
-  #   settingsObject[["DatabaseSearchRelativeMassDeviation"]] <- as.numeric(val$DatabaseSearchRelativeMassDeviation)
-  #   settingsObject[["FragmentPeakMatchAbsoluteMassDeviation"]] <- as.numeric(val$FragmentPeakMatchAbsoluteMassDeviation)
-  #   settingsObject[["FragmentPeakMatchRelativeMassDeviation"]] <- as.numeric(val$FragmentPeakMatchRelativeMassDeviation)
-  #   results <- data.frame()
-  #   results <- apply((MS3$MS1), 1, F_Identification)
-  #   results_dt <- ldply(results, data.frame) # Transfer results from list to data.frame
-  #   identifications_lipidmaps <- data.table(results_dt) #
-  #   identifications_lipidmaps <<- unique(identifications_lipidmaps, by = c("PrecuresorMZ", "RentionTime", "NeutralPrecursorMass", "adduct"))
-  #   identifications_lipidmaps <<- identifications_lipidmaps[!"+", on = .(Null)] # filterout the null candadates
-  #   # identifications_lipidmaps$RentionTime<-identifications_lipidmaps$RentionTime/60
-  #   setorder(identifications_lipidmaps, -RentionTime, -Score) #
-  #   print("MetFrag Identification Done!")
-  # })
-  lo_Identification[6, 1] <- glabel("FDR")
-  lo_Identification[6, 2] <- ed_FDR <- gedit(text = "0.05", width = 4)
-  tooltip(ed_FDR) <- "The false discovery rate used for quality control, the value should be positive larger than 0.001 
-  and are usually set as 0.05 (5% FDR) or 0.01 (1% FDR)"
-  # lo_Identification[6, 1:2] <- ed_FDR <- gradio(c('0.1%','1%','5% FDR'), horizontal=TRUE, width = 4)
-  # outputRadio <- gradio(c("HTML", "LATEX", "TEXT"), horizontal=TRUE, container=reportDialogOutFrame)
-  lo_Identification[7, 1:2] <- gbutton("Visualize target decoy", handler = function(h, ...) {
-    print("Visualize target decoy Done!")
+  lo_Identification[7, 1:2] <- widgets$bt_Metfrag <- gbutton("Run metfrag", handler = function(h, ...) {
+    F_Identification <- function(x) { # first define the identification function
+      candidates_null <- data.frame(Null = "+")
+      NeutralPrecursorMass <- as.numeric(x[18]) #
+      PrecuresorMZ <- as.numeric(x[1])
+      RT <- as.numeric(x[4])
+      rtmin <- as.numeric(x[5])
+      rtmax <- as.numeric(x[6])
+      # print(RT)
+      settingsObject[["MetFragDatabaseType"]] <- c("LocalCSV") # can try ExtendedPubChem next time
+      settingsObject[["LocalDatabasePath"]] <- c("inst/extdata/Database/lipidmaps2017Short.csv") #
+      settingsObject[["NeutralPrecursorMass"]] <- NeutralPrecursorMass # neutral monoisotopic precursor mass
+      # peak<-subset(MS3$MS2,(rt-RT)<60&(rt-RT)>-60)
+      peak <- subset(MS3$MS2, ((rt < (rtmax + 5)) & (rt > (rtmin - 5)) & (precursorMz > (PrecuresorMZ - 0.01)) & (precursorMz < (PrecuresorMZ + 0.01))))
+      peak_mz_intensity <- peak[, c(2, 6)]
+      peak_mz_intensity <- as.matrix(peak_mz_intensity, ncol = 2, byrow = TRUE)
+      settingsObject[["PeakList"]] <- peak_mz_intensity # get the peak list from MS2
+      candidates <- data.frame()
+      scored.candidates <- data.frame()
+      candidates <- run.metfrag(settingsObject)
+      if (is.null(candidates$Score)) {
+        scored.candidates <- candidates_null
+      } # fill candidates with null created
+      else {
+        scored.candidates <- candidates # add the identified candidates to scored.candidates
+        # add extra information to the identifications
+        scored.candidates$RentionTime <- RT
+        scored.candidates$rtmin <- rtmin
+        scored.candidates$rtmax <- rtmax
+        scored.candidates$NeutralPrecursorMass <- NeutralPrecursorMass
+        scored.candidates$PrecuresorMZ <- PrecuresorMZ
+        scored.candidates$mzmin <- x[2]
+        scored.candidates$mzmax <- x[3]
+        scored.candidates$npeaks <- x[7]
+        scored.candidates$Intensity1 <- x[10]
+        scored.candidates$Intensity2 <- x[11]
+        scored.candidates$IntensityMean <- x[15]
+        scored.candidates$isotops <- x[12] #
+        scored.candidates$adduct <- x[17]
+      }
+      return(scored.candidates)
+    }
+    settingsObject <- list()
+    
+    val$DatabaseSearchRelativeMassDeviation <<- as.character(Parameter[Parameters == "DatabaseSearchRelativeMassDeviation", Values])
+    if (val$DatabaseSearchRelativeMassDeviation == -1) {
+      val$DatabaseSearchRelativeMassDeviation <<- 10
+    }
+    
+    val$FragmentPeakMatchAbsoluteMassDeviation <<- as.character(Parameter[Parameters == "FragmentPeakMatchAbsoluteMassDeviation", Values])
+    if (val$FragmentPeakMatchAbsoluteMassDeviation == -1) {
+      val$FragmentPeakMatchAbsoluteMassDeviation <<- 0.005
+    }
+    
+    val$FragmentPeakMatchRelativeMassDeviation <<- as.character(Parameter[Parameters == "FragmentPeakMatchRelativeMassDeviation", Values])
+    if (val$FragmentPeakMatchRelativeMassDeviation == -1) {
+      val$FragmentPeakMatchRelativeMassDeviation <<- 10
+    }
+    
+    
+    settingsObject[["DatabaseSearchRelativeMassDeviation"]] <- as.numeric(val$DatabaseSearchRelativeMassDeviation)
+    settingsObject[["FragmentPeakMatchAbsoluteMassDeviation"]] <- as.numeric(val$FragmentPeakMatchAbsoluteMassDeviation)
+    settingsObject[["FragmentPeakMatchRelativeMassDeviation"]] <- as.numeric(val$FragmentPeakMatchRelativeMassDeviation)
+    results <- data.frame()
+    results <- apply((MS3$MS1), 1, F_Identification)
+    results_dt <- ldply(results, data.frame) # Transfer results from list to data.frame
+    identifications_lipidmaps <- data.table(results_dt) #
+    identifications_lipidmaps <<- unique(identifications_lipidmaps, by = c("PrecuresorMZ", "RentionTime", "NeutralPrecursorMass", "adduct"))
+    identifications_lipidmaps <<- identifications_lipidmaps[!"+", on = .(Null)] # filterout the null candadates
+    # identifications_lipidmaps$RentionTime<-identifications_lipidmaps$RentionTime/60
+    setorder(identifications_lipidmaps, -RentionTime, -Score) #
+    print("MetFrag Identification Done!")
   })
-  
-  lo_Identification[8, 1:2] <- gbutton("Export results", handler = function(h, ...) {
-    write.csv(result,'Experimental Identification.csv')
-    # write.csv(identifications_lipidmaps, "identifications_Metfrag.csv")
-    print("Export results Done!")
+  tooltip(widgets$bt_Metfrag) <- "MetFrag use both MS1 and MS2 for the identificaiton"
+  lo_Identification[8, 1:2] <- gbutton("Export metfrag", handler = function(h, ...) {
+    write.csv(identifications_lipidmaps, "identifications_Metfrag.csv")
+    print("Export identifications of Metfrag Done!")
   })
   ## Set Parameters for MS-Pathway method
-  #### Statistics ####
-  lo_ImportData[2, 3] <- gf_Statistics <- gframe("6 Statistics", horizontal = F, expand = TRUE)
+  #### Statistics and visualization ####
+  lo_ImportData[2, 3] <- gf_Statistics <- gframe("Statistics and visualization", horizontal = F, expand = TRUE)
   lo_Statistics <- glayout(cont = gf_Statistics, horizontal = F)
-  ## Set Filteration gframe in FilterNormalization tab
-  lo_Statistics[1, 1:2] <- widgets$bt_SanityCheck <- gbutton("Sanity check", handler = function(h, ...) {
+  ## Set Initialize gframe in FilterNormalization tab
+  lo_Statistics[1, 1:2] <- widgets$bt_Initialize <- gbutton("Initialize", handler = function(h, ...) {
     ### Export the feature table in the MetaboAnalyst format. Parameter 'label', defines the group assignment of the samples.
     exportMetaboAnalyst(xdata1, file = "met_test1.csv", label = xdata1$sample_group)
     # First step is to create the mSet Object, specifying that the data to be uploaded
     mSet <<- InitDataObjects("pktable", "stat", FALSE) # is a peak table ("pktable") and that statistical analysis will be performed ("stat").
     # The second step is to read in the processed data (created above)
     mSet <<- Read.TextData(mSet, "met_test1.csv", "colu", "disc")
+    FilterationCheck <<- 0
+  })
+  tooltip(widgets$bt_Initialize) <- "To create the mSet Object, specifying that the data to be uploaded"
+  ## Set Filteration gframe in FilterNormalization tab
+  lo_Statistics[2, 1:2] <- widgets$bt_SanityCheck <- gbutton("Sanity check", handler = function(h, ...) {
     mSet <<- SanityCheckData(mSet)
+    FilterationCheck <<- FilterationCheck + 1
     print("Sanity Check done!")
   })
   tooltip(widgets$bt_SanityCheck) <- "SanityCheckData is used for data processing, and performs a basic sanity check of the uploaded content, ensuring that the data is suitable for further analysis. The function will return a message if the data has successfully passed the check and is deemed suitable for further analysis. If it fails, the function will return a 0. The function will perform the check directly onto the mSet$dataSet object, and must be performed immediately after reading in data. The sanity check function evaluates the accuracy of sample and class labels, data structure, deals with non-numeric values, removes columns that are constant across all samples (variance = 0), and by default replaces missing values with half of the original minimal positive value in your dataset.Before data analysis, a data integrity check is performed to make sure that all the necessary information
@@ -629,7 +614,8 @@ MetGUI <- function() {
            missing values, zeros and negative values will be replaced by the half of the minimum positive value
            found within the data
            "
-  lo_Statistics[2, 1:2] <- widgets$bt_ReplaceMissingValue <- gbutton("Replace missing value", handler = function(h, ...) {
+  lo_Statistics[3, 1:2] <- widgets$bt_ReplaceMissingValue <- gbutton("Replace missing value", handler = function(h, ...) {
+    FilterationCheck <<- FilterationCheck + 1
     mSet <<- ReplaceMin(mSet)
     print("Replace Missing Value done!")
   })
@@ -638,9 +624,16 @@ MetGUI <- function() {
            the detection limit. The assumption of this approach is that most missing values are caused by low
            abundance metabolites (i.e.below the detection limit)."
 
-  lo_Statistics[3, 1:2] <- widgets$bt_FilterVariable <- gbutton("Filter variable", handler = function(h, ...) {
+  lo_Statistics[4, 1:2] <- widgets$bt_FilterVariable <- gbutton("Filter variable", handler = function(h, ...) {
     mSet <<- FilterVariable(mSet, "iqr", "F", 25)
     print("Filter Variable done!")
+    FilterationCheck <<- FilterationCheck + 1
+    if (FilterationCheck >= 3) {
+      enabled(widgets$bt_Normalization) <- TRUE
+      enabled(widgets$bt_PlotNormalization) <- TRUE
+    } else {
+      print("SanityCheck, ReplaceMissingValue and FilterVariable should be performed before normalization")
+    }
   })
   tooltip(widgets$bt_FilterVariable) <- "The purpose of the data filtering is to identify and remove variables that are unlikely to be of use
            when modeling the data. No phenotype information are used in the filtering process, so the result
@@ -648,25 +641,27 @@ MetGUI <- function() {
            strongly recommended for datasets with large number of variables (> 250) datasets contain much noise
            (i.e.chemometrics data).The function applies a filtering method, ranks the variables within the dataset, and removes variables based on its rank. The final dataset should contain no more than than 5000 variables for effective computing.Here we use iqr:interquantile for filter option; F: do not use QC samples; 25 is the relative standard deviation cut-off
            "
+
   ## Set Normalization gframe in FilterNormalization tab
-  lo_Statistics[4, 1] <- glabel("Normalization")
-  lo_Statistics[4, 2] <- widgets$cb_rowNorm <- gcombobox(c("QuantileNorm", "ProbNormT", "ProbNormF", "CompNorm", "SumNorm", "MedianNorm", "SpecNorm"), expand = T)
+  lo_Statistics[5, 1] <- glabel("Normalization")
+  lo_Statistics[5, 2] <- widgets$cb_rowNorm <- gcombobox(c("QuantileNorm", "ProbNormT", "ProbNormF", "CompNorm", "SumNorm", "MedianNorm", "SpecNorm"), expand = T)
   tooltip(widgets$cb_rowNorm) <- "Select the option for row-wise normalization, QuantileNorm for Quantile Normalization, ProbNormT for Probabilistic Quotient Normalization without using a reference sample, ProbNormF for Probabilistic Quotient Normalization based on a reference sample, CompNorm for Normalization by a reference feature, SumNorm for Normalization to constant sum, MedianNorm for Normalization to sample median, and SpecNorm for Normalization by a sample-specific factor."
 
-  lo_Statistics[5, 1] <- glabel("Transform")
-  lo_Statistics[5, 2] <- widgets$cb_transNorm <- gcombobox(c("LogNorm", "CrNorm"),)
+  lo_Statistics[6, 1] <- glabel("Transform")
+  lo_Statistics[6, 2] <- widgets$cb_transNorm <- gcombobox(c("LogNorm", "CrNorm"),)
   tooltip(widgets$cb_transNorm) <- "Select option to transform the data, LogNorm for Log Normalization, and CrNorm for Cubic Root Transformation."
 
-  lo_Statistics[6, 1] <- glabel("Scaling")
-  lo_Statistics[6, 2] <- widgets$cb_scaleNorm <- gcombobox(c("MeanCenter", "AutoNorm", "ParetoNorm", "RangeNorm"))
+  lo_Statistics[7, 1] <- glabel("Scaling")
+  lo_Statistics[7, 2] <- widgets$cb_scaleNorm <- gcombobox(c("MeanCenter", "AutoNorm", "ParetoNorm", "RangeNorm"))
   tooltip(widgets$cb_scaleNorm) <- "Select option for scaling the data, MeanCenter for Mean Centering(mean-centered only), AutoNorm for Autoscaling(mean-centered and divided by standard deviation of each variable), ParetoNorm for Pareto Scaling(mean-centered and divided by the square root of standard deviation of each
            variable), amd RangeNorm for Range Scaling(mean-centered and divided by the value range of each variable)."
 
-  lo_Statistics[7, 1:2] <- widgets$bt_Normalization <- gbutton("Run normalization",  handler = function(h, ...) {
+  lo_Statistics[8, 1:2] <- widgets$bt_Normalization <- gbutton("Run normalization", do.functions = FALSE, handler = function(h, ...) {
     mSet <<- PreparePrenormData(mSet)
     mSet <<- Normalization(mSet, svalue(widgets$cb_rowNorm), svalue(widgets$cb_transNorm), svalue(widgets$cb_scaleNorm), ratio = FALSE, ratioNum = 20)
     print("Normalization done!")
   })
+  enabled(widgets$bt_Normalization) <- FALSE
   tooltip(widgets$bt_Normalization) <- "The data is stored as a table with one sample per row and one variable (bin/peak/metabolite) per
            column. The normalization procedures implemented below are grouped into four categories. Sample
            specific normalization allows users to manually adjust concentrations based on biological inputs (i.e.
@@ -674,11 +669,11 @@ MetGUI <- function() {
            data transformation and scaling are two different approaches to make features more comparable.This function performs row-wise normalization, transformation, and scaling of your metabolomic data.
            "
 
-  lo_Statistics[8, 1:2] <- widgets$bt_PlotNormalization <- gbutton("Show normalization effect", handler = function(h, ...) {
+  lo_Statistics[9, 1:2] <- widgets$bt_PlotNormalization <- gbutton("Plot normalization effect", handler = function(h, ...) {
     mSet <<- PlotNormSummary(mSet, "norm_0_", "png", 72, width = NA)
     mSet <<- PlotSampleNormSummary(mSet, "snorm_0_", "png", 72, width = NA)
     # F_Delete_Ggraphics()
-    svg(paste0("Normalization Density", ".svg"))
+    svg(paste0('Normalization Density','.svg'))
     par(mar = c(0, 0, 0, 0))
     plot.new()
     rasterImage(load.image(mSet[["imgSet"]][["summary_norm"]]), 0, 0, 0.5, 1)
@@ -686,101 +681,47 @@ MetGUI <- function() {
     dev.off()
     print("Normalization Density done!")
   })
+  enabled(widgets$bt_PlotNormalization) <- FALSE
   tooltip(widgets$bt_PlotNormalization) <- "To see the Normalization Density Effect."
-  lo_Statistics[9, 1:2] <- widgets$bt_Mummichog <- gbutton("Mummichog analysis", handler = function(h, ...) {
-    ## Initialize mMum
-    rm(mMum)
-    mMum <- InitDataObjects("mass_all", "mummichog", FALSE) # Create objects for storing processed data from the MS peaks to pathways module
-    SetPeakFormat("mprt") # Set the format of the peak list, contains m.z, p.value, rt, and t.score
-    mMum <- UpdateInstrumentParameters(mMum,10, "positive",force_primary_ion="yes",rt_frac = 0.02) # Set parameters for analysis, in this case the mass accuracy is set to 5 ppm, the mode of the MS instrument is negative
-    mMum<-Read.PeakListData(mMum, paste0(Cell, Input)) #only support .txt format
-    mMum <- SanityCheckMummichogData(mMum) # Sanity check of the uploaded data
-    ## Now customize adducts
-    #add.vec <- c("M [1+]","M+H [1+]","M+2H [2+]","M+3H [3+]","M+Na [1+]","M+H+Na [2+]","M+K [1+]","M+H2O+H [1+]","M-H2O+H [1+]","M-H4O2+H [1+]","M(C13)+H [1+]","M(C13)+2H [2+]","M(C13)+3H [3+]","M(Cl37)+H [1+]","M-NH3+H [1+]","M-CO+H [1+]","M-CO2+H [1+]","M-HCOOH+H [1+]","M+HCOONa [1+]","M-HCOONa+H [1+]","M+NaCl [1+]","M-C3H4O2+H [1+]","M+HCOOK [1+]","M-HCOOK+H [1+]","M-H [1-]","M-2H [2-]","M-H2O-H [1-]","M-H+O [1-]","M+K-2H [1-]","M+Na-2H [1- ]","M+Cl [1-]","M+Cl37 [1-]","M+HCOO [1-]","M+CH3COO [1-]")
-    add.vec <- c("M+H [1+]","M+Na [1+]","M-H2O+H [1+]")
-    mMum<-Setup.AdductData(mMum, add.vec);
-    mMum<-PerformAdductMapping(mMum, "mixed")
-    # Perform the mummichog algorithm, First set the algorithm to be used to mummichog, then. This function may take sometime for processing, and will output the pathway-results and the compound matching tables in your working directory
-    mMum<-SetPeakEnrichMethod(mMum, "mum", "v2") #in this case the pathway library is from the human MFN model. 
-    mMum<-SetMummichogPval(mMum, 0.01)  #set the p-value cutoff for mummichog analysis, also use 0.15
-    mMum<-PerformPSEA(mMum, "hsa_mfn", permNum = 100,libVersion = "current") #hsa_mfn library,permutations to 1000 bsu_kegg for bacteria
-    mMum<-PlotPeaks2Paths(mMum, paste0(Cell,Label,"peaks_to_paths"), "png", 300, width=NA) #The color and size of each circle corresponds to its p-value and enrichment factor,respectively. The enrichment factor of a pathway is calculated as the ratio between the number of significant pathway hits and the expected number of compound hits within the pathway.
-    head(mMum$mummi.resmat) # To view the results of the pathway analysis
-  })
-  tooltip(widgets$bt_PlotNormalization) <- "mummichog pathway enrichment"
-  
-  lo_Statistics[10, 1:2] <- widgets$bt_PathwayNetwork <- gbutton("Pathway network visualisation", handler = function(h, ...) {
-    ## Network view of meta-analysis
-    mMum<-PlotMSPeaksCpdEcpdNetwork(mMum, "cpd", 0.25, "static", "fr", "YlOrRd", 3.5)
-    mMum<-PlotMSPeaksCpdEcpdNetwork(mMum, "ec", 0.25, "static", "fr", "YlOrRd", 3.5)
-    file.rename(c("mummichog_cpd_network.png","mummichog_ec_network.png"),
-                c(paste0(Cell,Label,"_mummichog_cpd_network.png"),paste0(Cell,Label,"_mummichog_ec_network.png")))
-    ## Load the pathway and compound files into the final result excel
-    mummichog_pathway_enrichment <- read.csv("mummichog_pathway_enrichment.csv")
-    write.csv(mummichog_pathway_enrichment,paste0(Cell,Label,"_mummichog_pathway_enrichment.csv"),row.names = FALSE)
-    ## Process then load the mummichog_matched_compound_all.csv file
-    matched_compound<-data.table(read.csv("mummichog_matched_compound_all.csv")) %>% setorder(.,Query.Mass,Retention.Time,Mass.Diff)
-    setnames(matched_compound,c("Query.Mass","Matched.Compound","Matched.Form","Retention.Time"),c("mz","kegg_id","adduct","rt"))
-    compound_db<-data.table(readRDS(paste0(Path,"compound_db.rds")))  %>% unique(.,by="kegg_id") # only keep 1 entry for one kegg id
-    matched_compound<-left_join(matched_compound,compound_db,by=("kegg_id")) %>% data.table(.)
-    ## Calculate mass according to adduct type
-    matched_compound[adduct=="M+H [1+]",mass:=mz-1.007276]
-    matched_compound[adduct=="M-H2O+H [1+]",mass:=mz+17.00381]
-    matched_compound[adduct=="M+Na [1+]",mass:=mz-22.989218]
-    matched_compound[,massRound:=round(mass,digits = 2)]
-    setcolorder(matched_compound, c('mz','rt',colnames(matched_compound)[!(colnames(matched_compound) %in% c('mz','rt'))]))
-    ## Add quantification value to the matched compound
-    # names(matched_compound)
-    # names(Exp)
-    setcolorder(FT, c('mz','mzmin','mzmax','rt','rtmin','rtmax',colnames(FT)[!(colnames(FT) %in% c('mz','mzmin','mzmax','rt','rtmin','rtmax'))]))
-    FTRep<-F_ReplaceMZRTRange(FT,lmz=1,lmzmin=2,lmzmax=3,lrt=4,lrtmin = 5,lrtmax = 6,
-                              matched_compound,rmz=1,rrt=2,tolmz=0,tolrt=0)
-    matched_compound_stat<-left_join(matched_compound,FTRep,by=c("mz","rt")) %>% data.table(.)
-    # matched_compound_stat<-left_join(matched_compound_stat,Volcano,by=c("Sample")) %>% data.table(.)
-    write.csv(matched_compound_stat,paste0(Cell,Label,"_matched_compound_stat.csv"),row.names = FALSE)
-  })
-  tooltip(widgets$bt_PathwayNetwork) <- "Network view of meta-analysis"
-  
-  ## Set Volcano button in Statistics tab
-  lo_Statistics[1, 3] <- "Fold change"
-  lo_Statistics[1, 4] <- ed_FCThreshold <- gedit(text = "2", width = 4)
+
+  ##Set Volcano button in Statistics tab
+  lo_Statistics[1,3]<-"Fold change"
+  lo_Statistics[1,4]<-ed_FCThreshold<-gedit(text = "2", width = 4)  
   tooltip(ed_FCThreshold) <- "Calculate the fold change between WT and KO groups, each point represents a peak. 
                                     The default Fold change threshold is set as 2"
-  lo_Statistics[2, 3] <- "Non-parametric"
-  lo_Statistics[2, 4:5] <- cb_nonpar <- gcombobox(c("FALSE", "TRUE"))
-
-  lo_Statistics[3, 3] <- "p-value cutoff"
-  lo_Statistics[3, 4] <- ed_threshp <- gedit(text = "0.05", width = 4)
-
-  lo_Statistics[4, 3] <- "paired"
-  lo_Statistics[4, 4:5] <- cb_paired <- gcombobox(c("FALSE", "TRUE"))
+  lo_Statistics[2,3]<-"Non-parametric"
+  lo_Statistics[2,4:5]<-cb_nonpar<-gcombobox(c("FALSE","TRUE"))
+  
+  lo_Statistics[3,3]<-"p-value cutoff"
+  lo_Statistics[3,4]<-ed_threshp<-gedit(text = "0.05", width = 4) 
+  
+  lo_Statistics[4,3]<-"paired"
+  lo_Statistics[4,4:5]<-cb_paired<-gcombobox(c("FALSE","TRUE"))
   tooltip(ed_threshp) <- "perform t-test analysis. This univariate analyses provide a preliminary overview about
            features that are potentially significant in discriminating the conditions under study.For paired fold change analysis, the algorithm rst counts the total number of pairs with fold changes
            that are consistently above/below the specified FC threshold for each variable. A variable will be reported
            as significant if this number is above a given count threshold (default > 75% of pairs/variable)"
- lo_Statistics[5, 3:4] <- gbutton("Run volcano plot", handler = function(h, ...) {
-   mSet <<- Volcano.Anal(mSet,
-     fcthresh = as.numeric(svalue(ed_FCThreshold)),
-     nonpar = as.logical(svalue(cb_nonpar)),
-     threshp = as.numeric(svalue(ed_threshp)),
-     paired = as.logical(svalue(cb_paired)),
-     cmpType = 1, equal.var = TRUE, pval.type = "raw"
-   )
-   mSet <<- PlotVolcano(mSet, "Volcano", 0, "png", dpi = 72, width = NA)
-   # F_Delete_Ggraphics()
-   svg(paste0("Volcano Plot", ".svg"))
-   par(mar = c(0, 0, 0, 0))
-   plot.new()
-   # plot(1:10,main="volcano",ty="n",xlab="",ylab="")
-   rasterImage(load.image(mSet[["imgSet"]][["volcano"]]), 0, 0, 1, 1)
-   dev.off()
-   print("Volcano Plot done!")
- })
-  ## Set PCA gframe in Statistics tab
- lo_Statistics[6, 3:4] <- widgets$bt_PCA <- gbutton("Run PCA", handler = function(h, ...) {
-   mSet <<- PCA.Anal(mSet)
-   print("Principle Component Analysis done!")
- })
+  lo_Statistics[5,3:4] <- gbutton("Run volcano plot", handler = function(h,...) {
+    mSet<<-Volcano.Anal(mSet, fcthresh=as.numeric(svalue(ed_FCThreshold)),
+                        nonpar=as.logical(svalue(cb_nonpar)), 
+                        threshp=as.numeric(svalue(ed_threshp)),
+                        paired=as.logical(svalue(cb_paired)), 
+                        cmpType=1,equal.var=TRUE, pval.type="raw")
+    mSet<<-PlotVolcano(mSet, "Volcano", 0,"png", dpi=72, width=NA)
+    # F_Delete_Ggraphics()
+    svg(paste0('Volcano Plot','.svg'))
+    par(mar=c(0,0,0,0)) 
+    plot.new()
+    #plot(1:10,main="volcano",ty="n",xlab="",ylab="")
+    rasterImage(load.image(mSet[["imgSet"]][["volcano"]]),0,0,1,1)
+    dev.off()
+    print("Volcano Plot done!")
+  })
+  ##Set PCA gframe in Statistics tab
+  lo_Statistics[6,3:4]<- widgets$bt_PCA <- gbutton("Run PCA", handler = function(h,...) {
+    mSet<<-PCA.Anal(mSet)
+    print("Principle Component Analysis done!")
+  })
   tooltip(widgets$bt_PCA) <- "PCA is an unsupervised method aiming to find the directions that best explain the variance in a data
            set (X) without referring to class labels (Y). The data are summarized into much fewer variables called
            scores which are weighted average of the original variables. The weighting profiles are called loadings.
@@ -850,17 +791,17 @@ MetGUI <- function() {
   tooltip(widgets$bt_PlotPLSSummary) <- "Plot PLS Summary"
   
   ##Set PreparePDFReport gframe in Statistics tab
-  # lo_Statistics[10,1]<- "Report name"
-  # lo_Statistics[10,2]<- ed_ReportName<-gedit(text = "MetGUI", width = 4) 
+  lo_Statistics[10,1]<- "Report name"
+  lo_Statistics[10,2]<- ed_ReportName<-gedit(text = "msGUI", width = 4) 
   lo_Statistics[10,3:4]<- gbutton("Export report", handler = function(h,...) {
-    PreparePDFReport(mSet, "MetGUI") #create a summary report of the statistical analysis 
+    PreparePDFReport(mSet, svalue(ed_ReportName)) #create a summary report of the statistical analysis 
     print("PreparePDFReport done!")
   })
 
   #### About####
   gp_About <- ggroup(horizontal = FALSE, cont = nb, label = "About")
   # addSpring(gp_About)
-  gtext("MetGUI is a function set with Gui to process mass spectrometry data", font.attr = list(size = "xx-large", family = "monospace"), expand = TRUE, fill = TRUE, container = gp_About)
+  gtext("msGUI is a function set with Gui to process mass spectrometry data", font.attr = list(size = "xx-large", family = "monospace"), expand = TRUE, fill = TRUE, container = gp_About)
   #### Plot tab####
   # gg <<- ggraphics(cont=nb, label='Plot',visible=FALSE)
   # gp_Plot= ggroup(horizontal = FALSE, cont = nb, label = "Plot")
